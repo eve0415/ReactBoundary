@@ -1,0 +1,7 @@
+package check-react-boundary:check;
+
+world check-react-boundary {
+	import log: func(msg: string);
+
+	export check: func();
+}

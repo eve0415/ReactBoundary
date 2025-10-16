@@ -18,16 +18,17 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "dbaeumer.vscode-eslint",
+        "oxc.oxc-vscode",
+        "rust-lang.rust-analyzer",
+        "bytecodealliance.wit-idl",
         "ms-vscode.extension-test-runner",
         "ms-azuretools.vscode-docker",
         "github.vscode-github-actions",
+        "GitHub.vscode-pull-request-github",
         "EditorConfig.EditorConfig",
         "Anthropic.claude-code",
-        "GitHub.vscode-pull-request-github",
         "google.gemini-cli-vscode-ide-companion",
-        "openai.chatgpt",
-        "oxc.oxc-vscode"
+        "openai.chatgpt"
       ],
       "settings": {
         "diffEditor.experimental.showMoves": true,
@@ -110,23 +111,6 @@
       },
       "mcp": {
         "servers": {
-          "serena": {
-            "type": "stdio",
-            "command": "uvx",
-            "args": [
-              "--from",
-              "git+https://github.com/oraios/serena",
-              "serena",
-              "start-mcp-server",
-              "--context",
-              "ide-assistant",
-              "--project",
-              "/workspace",
-              "--enable-web-dashboard",
-              "false"
-            ],
-            "env": {}
-          },
           "github": {
             "type": "http",
             "url": "https://api.githubcopilot.com/mcp/"

@@ -136,4 +136,14 @@ dist
 .pnp.*
 
 # pnpm
-.pnpm-store
+.pnpm-store/
+
+# llm
+.claude/
+.mcp.json
+
+# Idea
+.idea/
+
+# Added by cargo
+/target
