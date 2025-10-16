@@ -18,7 +18,6 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "biomejs.biome",
         "dbaeumer.vscode-eslint",
         "ms-vscode.extension-test-runner",
         "ms-azuretools.vscode-docker",
@@ -27,7 +26,8 @@
         "Anthropic.claude-code",
         "GitHub.vscode-pull-request-github",
         "google.gemini-cli-vscode-ide-companion",
-        "openai.chatgpt"
+        "openai.chatgpt",
+        "oxc.oxc-vscode"
       ],
       "settings": {
         "diffEditor.experimental.showMoves": true,
@@ -35,17 +35,12 @@
         "editor.formatOnType": true,
         "editor.formatOnPaste": true,
         "editor.codeActionsOnSave": {
-          "quickfix.biome": "always",
-          "source.addMissingImports": "always",
-          "source.fixAll": "always",
-          "source.fixAll.eslint": "always",
-          "source.fixAll.biome": "always",
-          "source.organizeImports": "never",
-          "source.organizeImports.biome": "always"
+          "source.fixAll.oxc": "always",
+          "source.organizeImports": "always"
         },
         "editor.cursorBlinking": "smooth",
         "editor.cursorSmoothCaretAnimation": "on",
-        "editor.defaultFormatter": "biomejs.biome",
+        "editor.defaultFormatter": "oxc.oxc-vscode",
         "editor.linkedEditing": true,
         "editor.pasteAs.preferences": [
           "text.updateImports.jsts"
@@ -67,6 +62,8 @@
           "**/out": true
         },
         "javascript.updateImportsOnPaste.enabled": true,
+        "oxc.fmt.experimental": true,
+        "oxc.typeAware": true,
         "search.exclude": {
           "pnpm-lock.yaml": true,
           "**/dist": true,
@@ -93,19 +90,10 @@
           ]
         },
         "[javascript]": {
-          "editor.defaultFormatter": "biomejs.biome"
+          "editor.defaultFormatter": "oxc.oxc-vscode"
         },
         "[typescript]": {
-          "editor.defaultFormatter": "biomejs.biome"
-        },
-        "[typescriptreact]": {
-          "editor.defaultFormatter": "biomejs.biome"
-        },
-        "[json]": {
-          "editor.defaultFormatter": "biomejs.biome"
-        },
-        "[jsonc]": {
-          "editor.defaultFormatter": "biomejs.biome"
+          "editor.defaultFormatter": "oxc.oxc-vscode"
         },
         "[markdown]": {
           "diffEditor.ignoreTrimWhitespace": false,
