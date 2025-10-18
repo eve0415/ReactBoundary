@@ -147,3 +147,6 @@ dist
 
 # Added by cargo
 /target
+
+# generated
+src/analyzeReactBoundary.ts

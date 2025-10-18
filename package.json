@@ -20,12 +20,12 @@
     ]
   },
   "scripts": {
-    "build:cargo": "cargo build --target wasm32-wasip2",
+    "build:cargo": "cargo build --target wasm32-unknown-unknown",
+    "generate": "wit2ts --outDir ./src ./wit",
     "vscode:prepublish": "pnpm run package",
     "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
-    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
@@ -36,7 +36,9 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.8.0",
+    "@types/node": "^24.8.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "@types/vscode": "^1.105.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
@@ -45,6 +47,8 @@
     "npm-run-all": "^4.1.5",
     "oxlint": "^1.23.0",
     "oxlint-tsgolint": "^0.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "typescript": "^5.9.3"
   }
 }

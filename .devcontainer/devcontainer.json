@@ -4,13 +4,11 @@
     "dockerfile": "Dockerfile"
   },
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/rust:1": {}
   },
   "postCreateCommand": "git config --local core.ignorecase false",
-  "postStartCommand": "npm install -g @openai/codex @google/gemini-cli && pnpm install --frozen-lockfile",
-  "containerEnv": {
-    "TZ": "Asia/Tokyo"
-  },
+  "postStartCommand": "npm install -g @openai/codex @google/gemini-cli && pnpm install --frozen-lockfile & rust install wasm-tools",
   "mounts": [
     "type=bind,source=${localEnv:HOME}/.gemini,target=/home/node/.gemini,type=bind,consistency=cached",
     "type=bind,source=${localEnv:HOME}/.codex,target=/home/node/.codex,type=bind,consistency=cached"

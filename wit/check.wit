@@ -1,7 +1,28 @@
-package check-react-boundary:check;
+package analyze-react-boundary:check;
 
-world check-react-boundary {
+interface types {
+	record component-analysis {
+		name: string,
+		is-client-component: bool,
+	}
+
+	record import-analysis {
+		identifier: list<string>,
+		source: string,
+	}
+
+	record analysis-result {
+		imports: list<import-analysis>,
+		components: list<component-analysis>,
+	}
+}
+
+world analyze-react-boundary {
+	use types.{analysis-result};
+
+	export types;
+
 	import log: func(msg: string);
 
-	export check: func();
+	export analyze: func(content: list<u8>, extension: string) -> result<analysis-result, string>;
 }
