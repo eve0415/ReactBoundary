@@ -4,6 +4,15 @@ import { Memory, WasmContext } from "@vscode/wasm-component-model";
 import * as vscode from "vscode";
 import { analyzeReactBoundary } from "./analyzeReactBoundary";
 
+const decorations = vscode.window.createTextEditorDecorationType({
+  after: {
+    contentText: " ⬅️ Client Component",
+    margin: "0 0 0 1rem",
+    color: "rgba(100, 100, 100, 0.7)",
+    fontStyle: "italic",
+  },
+});
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
@@ -12,10 +21,6 @@ export async function activate(context: vscode.ExtensionContext) {
     log: true,
   });
   context.subscriptions.push(channel);
-
-  const fileContent = await vscode.workspace.fs.readFile(
-    vscode.Uri.file("/workspaces/ReactBoundary/src/test/example/client.tsx"),
-  );
 
   // Load the Wasm module
   const filename = vscode.Uri.joinPath(
@@ -52,10 +57,43 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("reactboundary.helloWorld", async () => {
-      channel.show();
-      channel.info("Analyzing /src/test/example/client.tsx");
-      channel.info("", api.analyze(fileContent, "tsx"));
+    vscode.window.onDidChangeActiveTextEditor((e) => {
+      if (!e) return;
+      if (e.document.isUntitled) return;
+
+      vscode.workspace.fs.readFile(e.document.uri).then((fileContent) => {
+        channel.info(`Analyzing file: ${e.document.uri.path}`);
+
+        const extension = e.document.uri.path.split(".").pop();
+        if (!extension) return;
+
+        const analyzed = api.analyze(fileContent, extension);
+
+        channel.info(`Imports found: ${analyzed.imports.length}`);
+
+        const decorationRanges: vscode.Range[] = [];
+
+        for (const component of analyzed.components) {
+          channel.info(
+            `Component: ${component.name}, isClientComponent: ${component.isClientComponent}`,
+          );
+
+          if (component.isClientComponent) {
+            const range = new vscode.Range(
+              component.range.start.line,
+              component.range.start.character,
+              component.range.end.line,
+              component.range.end.character,
+            );
+            decorationRanges.push(range);
+          }
+        }
+
+        vscode.window.activeTextEditor?.setDecorations(
+          decorations,
+          decorationRanges,
+        );
+      });
     }),
   );
 }

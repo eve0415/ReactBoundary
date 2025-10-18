@@ -1,4 +1,5 @@
 mod analyze;
+mod range;
 
 use crate::analyze_react_boundary::check::types;
 use oxc::allocator::Allocator;
@@ -9,8 +10,8 @@ use oxc::ast::ast::Statement::{
 use oxc::ast::ast::{BindingPatternKind, ExportDefaultDeclarationKind};
 use oxc::ast::ast::{Declaration, ImportOrExportKind};
 use oxc::parser::{ParseOptions, Parser};
-use oxc::span::SourceType;
-use std::collections::HashSet;
+use oxc::span::{SourceType, Span};
+use std::collections::HashMap;
 
 wit_bindgen::generate!();
 
@@ -93,8 +94,8 @@ impl Guest for AnalyzeReactBoundary {
             })
             .collect::<Vec<_>>();
 
-        // Track all React component declarations
-        let mut component_declarations: HashSet<String> = HashSet::new();
+        // Track all React component declarations with their spans
+        let mut component_declarations: HashMap<String, Span> = HashMap::new();
 
         // First pass: identify all React component variable declarations
         for statement in program.body.iter() {
@@ -105,15 +106,15 @@ impl Guest for AnalyzeReactBoundary {
 
                         // Check if this is a React component
                         if analyze::is_react_component(&name, &declarator.id, &declarator.init) {
-                            component_declarations.insert(name);
+                            component_declarations.insert(name, ident.span);
                         }
                     }
                 }
             }
         }
 
-        // Second pass: extract exported component names
-        let mut exported_components: Vec<String> = Vec::new();
+        // Second pass: extract exported component names with their spans
+        let mut exported_components: Vec<(String, Span)> = Vec::new();
 
         for statement in program.body.iter() {
             match statement {
@@ -123,8 +124,8 @@ impl Guest for AnalyzeReactBoundary {
                         &export_decl.declaration
                     {
                         let name = ident.name.to_string();
-                        if component_declarations.contains(&name) {
-                            exported_components.push(name);
+                        if let Some(&span) = component_declarations.get(&name) {
+                            exported_components.push((name, span));
                         }
                     }
                 }
@@ -145,8 +146,9 @@ impl Guest for AnalyzeReactBoundary {
                                     &declarator.id,
                                     &declarator.init,
                                 ) {
-                                    exported_components.push(name.clone());
-                                    component_declarations.insert(name);
+                                    let span = ident.span;
+                                    exported_components.push((name.clone(), span));
+                                    component_declarations.insert(name, span);
                                 }
                             }
                         }
@@ -158,9 +160,10 @@ impl Guest for AnalyzeReactBoundary {
 
         let components = exported_components
             .into_iter()
-            .map(|name| types::ComponentAnalysis {
+            .map(|(name, span)| types::ComponentAnalysis {
                 name,
                 is_client_component: has_use_client_directive,
+                range: range::span_to_range(&source_text, span),
             })
             .collect::<Vec<_>>();
 

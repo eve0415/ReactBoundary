@@ -1,9 +1,20 @@
 package analyze-react-boundary:check;
 
 interface types {
+	record position {
+		line: u32,
+		character: u32,
+	}
+
+	record range {
+		start: position,
+		end: position,
+	}
+
 	record component-analysis {
 		name: string,
 		is-client-component: bool,
+		range: range,
 	}
 
 	record import-analysis {

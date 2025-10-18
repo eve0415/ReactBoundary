@@ -2,7 +2,7 @@ use oxc::ast::ast::TSTypeName::IdentifierReference;
 use oxc::ast::ast::{BindingPattern, Expression, Statement, TSType};
 
 /// Check if a type annotation is a React component type
-pub(crate) fn is_react_type_annotation(ts_type: &TSType) -> bool {
+fn is_react_type_annotation(ts_type: &TSType) -> bool {
     match ts_type {
         TSType::TSTypeReference(type_ref) => {
             // Check if the type name is a React component type
@@ -35,7 +35,7 @@ fn has_jsx_return(statements: &[Statement]) -> bool {
 }
 
 /// Check if an expression contains JSX
-pub(crate) fn contains_jsx(expr: &Expression) -> bool {
+fn contains_jsx(expr: &Expression) -> bool {
     match expr {
         Expression::JSXElement(_) | Expression::JSXFragment(_) => true,
         Expression::ArrowFunctionExpression(arrow) => has_jsx_return(&arrow.body.statements),
@@ -48,7 +48,7 @@ pub(crate) fn contains_jsx(expr: &Expression) -> bool {
 }
 
 /// Check if a binding pattern has React type annotation
-pub(crate) fn has_react_type(binding: &BindingPattern) -> bool {
+fn has_react_type(binding: &BindingPattern) -> bool {
     if let Some(type_annotation) = &binding.type_annotation {
         is_react_type_annotation(&type_annotation.type_annotation)
     } else {
