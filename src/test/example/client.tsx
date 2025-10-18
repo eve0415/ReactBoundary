@@ -2,8 +2,12 @@
 
 import type { FC } from "react";
 
-const ClientComponent: FC = () => {
-  return <div>This is a client-side component.</div>;
+const ClientComponentDefaultExport: FC = () => {
+  return <div>This is a client-side component. (Default export)</div>;
 };
 
-export default ClientComponent;
+export const ClientComponentNamedExport: FC = () => {
+  return <div>This is a client-side component. (Named export)</div>;
+};
+
+export default ClientComponentDefaultExport;

@@ -3,15 +3,11 @@ mod range;
 
 use crate::analyze_react_boundary::check::types;
 use oxc::allocator::Allocator;
-use oxc::ast::ast::ImportDeclarationSpecifier::ImportSpecifier;
-use oxc::ast::ast::Statement::{
-    ExportDefaultDeclaration, ExportNamedDeclaration, ImportDeclaration, VariableDeclaration,
-};
-use oxc::ast::ast::{BindingPatternKind, ExportDefaultDeclarationKind};
-use oxc::ast::ast::{Declaration, ImportOrExportKind};
+use oxc::ast::ast::{BindingPatternKind, ExportDefaultDeclarationKind, ImportDeclarationSpecifier};
+use oxc::ast::ast::{Declaration, ImportOrExportKind, Statement};
 use oxc::parser::{ParseOptions, Parser};
 use oxc::span::{SourceType, Span};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 wit_bindgen::generate!();
 
@@ -61,7 +57,7 @@ impl Guest for AnalyzeReactBoundary {
             .body
             .iter()
             .filter_map(|statement| {
-                if let ImportDeclaration(import_declaration) = statement {
+                if let Statement::ImportDeclaration(import_declaration) = statement {
                     // We can just ignore type imports as it doesn't have a runtime impact
                     if import_declaration.import_kind == ImportOrExportKind::Type {
                         return None;
@@ -73,20 +69,28 @@ impl Guest for AnalyzeReactBoundary {
                             .flat_map(|specifier| {
                                 specifier
                                     .into_iter()
-                                    .filter_map(|specifier| {
-                                        if let ImportSpecifier(specifier) = specifier {
-                                            if specifier.import_kind == ImportOrExportKind::Type {
+                                    .filter_map(|specifier| match specifier {
+                                        ImportDeclarationSpecifier::ImportSpecifier(spec) => {
+                                            if spec.import_kind == ImportOrExportKind::Type {
                                                 return None;
                                             }
-                                            Some(specifier.local.name.clone().to_string())
-                                        } else {
-                                            None
+                                            Some(spec.local.name.clone().to_string())
                                         }
+                                        ImportDeclarationSpecifier::ImportDefaultSpecifier(
+                                            spec,
+                                        ) => Some(spec.local.name.clone().to_string()),
+                                        ImportDeclarationSpecifier::ImportNamespaceSpecifier(
+                                            spec,
+                                        ) => Some(spec.local.name.clone().to_string()),
                                     })
                                     .collect::<Vec<_>>()
                             })
                             .collect::<Vec<_>>(),
                         source: import_declaration.source.value.clone().to_string(),
+                        source_span: range::string_literal_to_range(
+                            &source_text,
+                            import_declaration.source.span,
+                        ),
                     })
                 } else {
                     None
@@ -99,7 +103,7 @@ impl Guest for AnalyzeReactBoundary {
 
         // First pass: identify all React component variable declarations
         for statement in program.body.iter() {
-            if let VariableDeclaration(var_decl) = statement {
+            if let Statement::VariableDeclaration(var_decl) = statement {
                 for declarator in var_decl.declarations.iter() {
                     if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
                         let name = ident.name.to_string();
@@ -119,7 +123,7 @@ impl Guest for AnalyzeReactBoundary {
         for statement in program.body.iter() {
             match statement {
                 // Handle default exports: export default ComponentName
-                ExportDefaultDeclaration(export_decl) => {
+                Statement::ExportDefaultDeclaration(export_decl) => {
                     if let ExportDefaultDeclarationKind::Identifier(ident) =
                         &export_decl.declaration
                     {
@@ -130,7 +134,7 @@ impl Guest for AnalyzeReactBoundary {
                     }
                 }
                 // Handle named exports: export const ComponentName = ...
-                ExportNamedDeclaration(export_decl) => {
+                Statement::ExportNamedDeclaration(export_decl) => {
                     if let Some(declaration) = &export_decl.declaration
                         && let Declaration::VariableDeclaration(var_decl) = declaration
                     {
@@ -167,9 +171,44 @@ impl Guest for AnalyzeReactBoundary {
             })
             .collect::<Vec<_>>();
 
+        // Collect all imported identifiers
+        let imported_identifiers: HashSet<String> = imports
+            .iter()
+            .flat_map(|import| import.identifier.iter().cloned())
+            .collect();
+
+        // Collect JSX element usages
+        let jsx_usages_raw = analyze::collect_jsx_usages(&program.body);
+
+        // Filter JSX usages to only those that match imports
+        let jsx_usages = jsx_usages_raw
+            .into_iter()
+            .filter(|(name, _)| imported_identifiers.contains(name))
+            .map(|(name, span)| types::JsxUsage {
+                component_name: name,
+                range: range::span_to_range(&source_text, span),
+            })
+            .collect::<Vec<_>>();
+
+        // Log summary for users
+        if !components.is_empty() {
+            let client_components: Vec<_> = components
+                .iter()
+                .filter(|c| c.is_client_component)
+                .map(|c| c.name.as_str())
+                .collect();
+            if !client_components.is_empty() {
+                log(&format!(
+                    "Client components: {}",
+                    client_components.join(", ")
+                ));
+            }
+        }
+
         Ok(AnalysisResult {
             imports,
             components,
+            jsx_usages,
         })
     }
 }

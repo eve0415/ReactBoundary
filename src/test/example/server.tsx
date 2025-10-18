@@ -1,11 +1,14 @@
 import type { FC } from "react";
-import ClientComponent from "./client";
+import ClientComponentDefaultExport, {
+  ClientComponentNamedExport,
+} from "./client";
 
 const ServerComponent: FC = () => {
   return (
     <div>
       This is a server-side component.
-      <ClientComponent />
+      <ClientComponentDefaultExport />
+      <ClientComponentNamedExport />
     </div>
   );
 };

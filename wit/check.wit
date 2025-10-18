@@ -20,11 +20,18 @@ interface types {
 	record import-analysis {
 		identifier: list<string>,
 		source: string,
+		source-span: range,
+	}
+
+	record jsx-usage {
+		component-name: string,
+		range: range,
 	}
 
 	record analysis-result {
 		imports: list<import-analysis>,
 		components: list<component-analysis>,
+		jsx-usages: list<jsx-usage>,
 	}
 }
 

@@ -2,16 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 import { Memory, WasmContext } from "@vscode/wasm-component-model";
 import * as vscode from "vscode";
+import { analyzeDocument } from "./analyze";
 import { analyzeReactBoundary } from "./analyzeReactBoundary";
-
-const decorations = vscode.window.createTextEditorDecorationType({
-  after: {
-    contentText: " ⬅️ Client Component",
-    margin: "0 0 0 1rem",
-    color: "rgba(100, 100, 100, 0.7)",
-    fontStyle: "italic",
-  },
-});
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -56,46 +48,15 @@ export async function activate(context: vscode.ExtensionContext) {
     wasmContext,
   );
 
+  // Listen to document changes
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor((e) => {
-      if (!e) return;
-      if (e.document.isUntitled) return;
-
-      vscode.workspace.fs.readFile(e.document.uri).then((fileContent) => {
-        channel.info(`Analyzing file: ${e.document.uri.path}`);
-
-        const extension = e.document.uri.path.split(".").pop();
-        if (!extension) return;
-
-        const analyzed = api.analyze(fileContent, extension);
-
-        channel.info(`Imports found: ${analyzed.imports.length}`);
-
-        const decorationRanges: vscode.Range[] = [];
-
-        for (const component of analyzed.components) {
-          channel.info(
-            `Component: ${component.name}, isClientComponent: ${component.isClientComponent}`,
-          );
-
-          if (component.isClientComponent) {
-            const range = new vscode.Range(
-              component.range.start.line,
-              component.range.start.character,
-              component.range.end.line,
-              component.range.end.character,
-            );
-            decorationRanges.push(range);
-          }
-        }
-
-        vscode.window.activeTextEditor?.setDecorations(
-          decorations,
-          decorationRanges,
-        );
-      });
+    vscode.window.onDidChangeActiveTextEditor(async (e) => {
+      await analyzeDocument(e, api, channel);
     }),
   );
+
+  // Kick off first run when extension is activated
+  await analyzeDocument(vscode.window.activeTextEditor, api, channel);
 }
 
 // This method is called when your extension is deactivated
