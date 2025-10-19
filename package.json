@@ -18,19 +18,18 @@
   "main": "./dist/extension.js",
   "contributes": {},
   "scripts": {
-    "build:cargo": "cargo build --target wasm32-unknown-unknown",
     "generate": "wit2ts --outDir ./src ./wit",
-    "vscode:prepublish": "pnpm run package",
-    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "build": "npm-run-all build:*",
+    "build:cargo": "cargo build --target wasm32-unknown-unknown",
+    "build:esbuild": "node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
-    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
-    "check-types": "tsc --noEmit",
+    "watch:tests": "tsc -p . -w",
+    "tsc": "tsc -p .",
     "lint": "oxlint --type-aware --fix --fix-suggestions --fix-dangerously",
-    "test": "vscode-test"
+    "test": "npm-run-all build test:*",
+    "test:vscode": "tsc -p tsconfig.test.json && xvfb-run -a vscode-test --coverage --coverage-reporter=lcov  --coverage-reporter=json",
+    "test:rust": "cargo test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

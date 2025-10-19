@@ -6,7 +6,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   du -sh /var/cache/apt && \
   rm /etc/apt/apt.conf.d/docker-clean && \
   apt-get update && \
-  apt-get install -y xdg-utils
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get install --no-install-recommends -y \
+  xdg-utils libnss3 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2 xvfb xauth
 
 USER node:node
 

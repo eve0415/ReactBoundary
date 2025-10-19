@@ -10,8 +10,9 @@
 		"types": [
 				"vscode"
 		],
-		"outDir": "./out",
 		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
 		"noImplicitAny": true,
 		"noImplicitReturns": true,
 		"noImplicitThis": true,
@@ -22,5 +23,5 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false
 	},
-	"exclude": ["src/test/example"]
+	"exclude": ["src/test"]
 }
