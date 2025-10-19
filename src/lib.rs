@@ -35,6 +35,7 @@ impl Guest for AnalyzeReactBoundary {
             && let Some(error) = ret.errors.into_iter().next()
         {
             let source_code_error = error.clone().with_source_code(source_text.clone());
+            #[cfg(not(test))]
             log(&format!(
                 "Error: {} with code {}",
                 error.message, source_code_error
@@ -191,6 +192,7 @@ impl Guest for AnalyzeReactBoundary {
             .collect::<Vec<_>>();
 
         // Log summary for users
+        #[cfg(not(test))]
         if !components.is_empty() {
             let client_components: Vec<_> = components
                 .iter()
@@ -214,3 +216,345 @@ impl Guest for AnalyzeReactBoundary {
 }
 
 export!(AnalyzeReactBoundary);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn analyze_tsx(source: &str) -> Result<AnalysisResult, String> {
+        AnalyzeReactBoundary::analyze(source.as_bytes().to_vec(), "tsx".to_string())
+    }
+
+    #[test]
+    fn test_analyze_client_component_file() {
+        let source = r#"
+"use client";
+import type { FC } from "react";
+
+const ClientComponent: FC = () => {
+  return <div>Client</div>;
+};
+
+export default ClientComponent;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Should detect "use client" directive
+        assert_eq!(result.components.len(), 1);
+        assert_eq!(result.components[0].name, "ClientComponent");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_server_component_file() {
+        let source = r#"
+import type { FC } from "react";
+
+const ServerComponent: FC = () => {
+  return <div>Server</div>;
+};
+
+export default ServerComponent;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Should detect component but not mark as client
+        assert_eq!(result.components.len(), 1);
+        assert_eq!(result.components[0].name, "ServerComponent");
+        assert!(!result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_named_export() {
+        let source = r#"
+"use client";
+
+export const Button = () => {
+  return <button>Click</button>;
+};
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.components.len(), 1);
+        assert_eq!(result.components[0].name, "Button");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_multiple_exports() {
+        let source = r##"
+"use client";
+
+export const Button = () => <button>Click</button>;
+export const Link = () => <a href="#">Link</a>;
+
+const Header = () => <header>Header</header>;
+export default Header;
+        "##;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.components.len(), 3);
+
+        let names: Vec<&str> = result.components.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"Button"));
+        assert!(names.contains(&"Link"));
+        assert!(names.contains(&"Header"));
+
+        // All should be client components
+        assert!(result.components.iter().all(|c| c.is_client_component));
+    }
+
+    #[test]
+    fn test_analyze_imports_default_specifier() {
+        let source = r#"
+import ClientComponent from "./client";
+import AnotherComponent from "./another";
+
+const App = () => {
+  return <div>App</div>;
+};
+
+export default App;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.imports.len(), 2);
+
+        // Check first import
+        assert_eq!(result.imports[0].identifier.len(), 1);
+        assert_eq!(result.imports[0].identifier[0], "ClientComponent");
+        assert_eq!(result.imports[0].source, "./client");
+
+        // Check second import
+        assert_eq!(result.imports[1].identifier.len(), 1);
+        assert_eq!(result.imports[1].identifier[0], "AnotherComponent");
+        assert_eq!(result.imports[1].source, "./another");
+    }
+
+    #[test]
+    fn test_analyze_imports_named_specifier() {
+        let source = r#"
+import { Button, Link } from "./components";
+import { FC } from "react";
+
+const App: FC = () => <div>App</div>;
+export default App;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.imports.len(), 2);
+
+        // Check named imports from components
+        assert_eq!(result.imports[0].identifier.len(), 2);
+        assert!(result.imports[0].identifier.contains(&"Button".to_string()));
+        assert!(result.imports[0].identifier.contains(&"Link".to_string()));
+        assert_eq!(result.imports[0].source, "./components");
+
+        // Check FC import from react
+        assert_eq!(result.imports[1].identifier.len(), 1);
+        assert_eq!(result.imports[1].identifier[0], "FC");
+        assert_eq!(result.imports[1].source, "react");
+    }
+
+    #[test]
+    fn test_analyze_imports_namespace_specifier() {
+        let source = r#"
+import * as React from "react";
+import * as Components from "./components";
+
+const App = () => <div>App</div>;
+export default App;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.imports.len(), 2);
+
+        // Check namespace imports
+        assert_eq!(result.imports[0].identifier[0], "React");
+        assert_eq!(result.imports[1].identifier[0], "Components");
+    }
+
+    #[test]
+    fn test_analyze_ignores_type_imports() {
+        let source = r#"
+import type { FC } from "react";
+import type { Props } from "./types";
+import { Button } from "./button";
+
+const App: FC = () => <div>App</div>;
+export default App;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Should only include the Button import, not type imports
+        assert_eq!(result.imports.len(), 1);
+        assert_eq!(result.imports[0].identifier[0], "Button");
+        assert_eq!(result.imports[0].source, "./button");
+    }
+
+    #[test]
+    fn test_analyze_jsx_usages() {
+        let source = r#"
+import ClientComponent from "./client";
+import { Button, Link } from "./components";
+
+const App = () => {
+  return (
+    <div>
+      <ClientComponent />
+      <Button />
+      <Link />
+    </div>
+  );
+};
+
+export default App;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Should find all three JSX usages
+        assert_eq!(result.jsx_usages.len(), 3);
+
+        let usage_names: Vec<&str> = result
+            .jsx_usages
+            .iter()
+            .map(|u| u.component_name.as_str())
+            .collect();
+
+        assert!(usage_names.contains(&"ClientComponent"));
+        assert!(usage_names.contains(&"Button"));
+        assert!(usage_names.contains(&"Link"));
+    }
+
+    #[test]
+    fn test_analyze_jsx_usages_filtered_to_imports() {
+        let source = r#"
+import { Button } from "./components";
+
+// LocalComponent is NOT imported, so it should NOT be in jsx_usages
+const LocalComponent = () => <div>Local</div>;
+
+const App = () => {
+  return (
+    <div>
+      <Button />
+      <LocalComponent />
+    </div>
+  );
+};
+
+export default App;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Should only include Button (imported), not LocalComponent (local)
+        assert_eq!(result.jsx_usages.len(), 1);
+        assert_eq!(result.jsx_usages[0].component_name, "Button");
+    }
+
+    #[test]
+    fn test_analyze_complete_flow() {
+        let source = r#"
+"use client";
+import { ServerButton } from "./server";
+import type { FC } from "react";
+
+export const ClientButton: FC = () => {
+  return (
+    <button>
+      <ServerButton />
+    </button>
+  );
+};
+
+const ClientHeader = () => {
+  return <header>Header</header>;
+};
+
+export default ClientHeader;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Check imports
+        assert_eq!(result.imports.len(), 1); // type imports are ignored
+        assert_eq!(result.imports[0].identifier[0], "ServerButton");
+
+        // Check components
+        assert_eq!(result.components.len(), 2);
+        assert!(result.components.iter().all(|c| c.is_client_component));
+
+        // Check JSX usages
+        assert_eq!(result.jsx_usages.len(), 1);
+        assert_eq!(result.jsx_usages[0].component_name, "ServerButton");
+    }
+
+    #[test]
+    fn test_analyze_invalid_syntax() {
+        let source = "const x = {{{";
+
+        let result = AnalyzeReactBoundary::analyze(source.as_bytes().to_vec(), "tsx".to_string());
+
+        // Should return an error
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_invalid_extension() {
+        let source = "const x = 10;";
+
+        let result =
+            AnalyzeReactBoundary::analyze(source.as_bytes().to_vec(), "invalid".to_string());
+
+        // Should return an error for invalid extension
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_range_positions() {
+        let source = r#"
+const MyComponent = () => <div />;
+export default MyComponent;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Check that ranges are set correctly
+        assert_eq!(result.components.len(), 1);
+        let component = &result.components[0];
+
+        // Component name should be on line 1 (0-indexed)
+        assert_eq!(component.range.start.line, 1);
+        assert!(component.range.start.character > 0);
+        assert_eq!(component.range.end.line, 1);
+    }
+
+    #[test]
+    fn test_analyze_import_source_span() {
+        let source = r#"import X from "./client";"#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.imports.len(), 1);
+
+        // source_span should point inside the string (after opening quote)
+        let import = &result.imports[0];
+        assert_eq!(import.source_span.start.line, 0);
+
+        // Character should be after the opening quote
+        // "import X from "./client";"
+        //                ^--- should be around character 15
+        assert!(import.source_span.start.character >= 14);
+        assert!(import.source_span.start.character <= 16);
+    }
+}
