@@ -51,12 +51,18 @@ export async function activate(context: vscode.ExtensionContext) {
   // Listen to document changes
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(async e => {
-      await analyzeDocument(e, api, channel);
+      await analyzeDocument(e, api, channel).catch(err => {
+        channel.error(`Error during analysis: ${err}`);
+      });
     }),
   );
 
   // Kick off first run when extension is activated
-  await analyzeDocument(vscode.window.activeTextEditor, api, channel);
+  await analyzeDocument(vscode.window.activeTextEditor, api, channel).catch(
+    err => {
+      channel.error(`Error during analysis: ${err}`);
+    },
+  );
 }
 
 // This method is called when your extension is deactivated

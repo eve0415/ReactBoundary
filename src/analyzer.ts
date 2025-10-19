@@ -1,8 +1,8 @@
 import { analyzeReactBoundary } from './analyzeReactBoundary';
 import { componentDecoration, usageDecoration } from './decorations';
 import {
-  resolveImportedIdentifier,
   findImplementationFile,
+  resolveImportedIdentifier,
 } from './import-resolver';
 import * as vscode from 'vscode';
 
@@ -16,13 +16,14 @@ export async function analyzeDocument(
 ): Promise<void> {
   if (!editor) return;
   if (editor.document.isUntitled) return;
+  if (editor.document.uri.scheme !== 'file') return;
 
   const document = editor.document;
 
+  channel.info(`Analyzing ${document.uri.toString()}`);
+
   const extension = document.uri.path.split('.').pop();
-  if (!extension) {
-    return;
-  }
+  if (!extension) return;
 
   // Read from the document buffer (not disk) to get unsaved changes
   const documentText = document.getText();

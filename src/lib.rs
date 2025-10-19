@@ -19,12 +19,8 @@ struct AnalyzeReactBoundary;
 impl Guest for AnalyzeReactBoundary {
     fn analyze(content: Vec<u8>, extension: String) -> Result<AnalysisResult, String> {
         let source_text = String::from_utf8(content).unwrap();
-        let source_type = SourceType::from_extension(&extension).map_err(|e| {
-            format!(
-                "Failed to parse extension: {}",
-                e.to_string().replace("\"", "")
-            )
-        })?;
+        let source_type = SourceType::from_extension(&extension)
+            .map_err(|e| format!("{}: {}", e.to_string().replace("\"", ""), extension))?;
 
         let allocator = Allocator::default();
         let ret = Parser::new(&allocator, &source_text, source_type)
