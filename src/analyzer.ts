@@ -35,12 +35,10 @@ export async function analyzeDocument(
   // Decorate local client components
   for (const component of analyzed.components) {
     if (component.isClientComponent) {
-      const range = new vscode.Range(
-        component.range.start.line,
-        component.range.start.character,
-        component.range.end.line,
-        component.range.end.character,
-      );
+      // Place decoration at the end of the line for cleaner appearance
+      const line = document.lineAt(component.range.start.line);
+      const endOfLine = line.range.end;
+      const range = new vscode.Range(endOfLine, endOfLine);
       componentRanges.push(range);
     }
   }

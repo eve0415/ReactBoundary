@@ -6,7 +6,7 @@ import { ClientComponentNamedExport } from "./client";
 // This client component uses another client component
 // Should NOT show orange decoration on <ClientComponentNamedExport />
 // because we're already in client context
-const ClientUsesClient: FC = () => {
+export const ClientUsesClientNamedFunction: FC = () => {
   return (
     <div>
       <ClientComponentNamedExport />
@@ -14,4 +14,6 @@ const ClientUsesClient: FC = () => {
   );
 };
 
-export default ClientUsesClient;
+export default function ClientUsesClientDefaultFunction() {
+  return <div>This is a client-side component. (Default export)</div>;
+}

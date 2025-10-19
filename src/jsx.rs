@@ -133,14 +133,16 @@ fn collect_jsx_from_element(
             let name = ident.name.to_string();
             // Only track PascalCase components (user-defined components)
             if name.chars().next().is_some_and(|c| c.is_uppercase()) {
-                usages.push((name.clone(), ident.span));
+                // Use the entire JSX element's span so decoration appears after closing tag
+                usages.push((name.clone(), jsx_elem.span));
             }
         }
         JSXElementName::IdentifierReference(ident) => {
             let name = ident.name.to_string();
             // Only track PascalCase components (user-defined components)
             if name.chars().next().is_some_and(|c| c.is_uppercase()) {
-                usages.push((name.clone(), ident.span));
+                // Use the entire JSX element's span so decoration appears after closing tag
+                usages.push((name.clone(), jsx_elem.span));
             }
         }
         JSXElementName::MemberExpression(member_expr) => {
@@ -150,7 +152,8 @@ fn collect_jsx_from_element(
             {
                 let base_name = base_ident.name.to_string();
                 if base_name.chars().next().is_some_and(|c| c.is_uppercase()) {
-                    usages.push((base_name, base_ident.span));
+                    // Use the entire JSX element's span so decoration appears after closing tag
+                    usages.push((base_name, jsx_elem.span));
                 }
             }
         }
