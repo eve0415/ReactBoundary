@@ -157,6 +157,17 @@ impl Guest for AnalyzeReactBoundary {
         // Second pass: extract exported component names with their spans
         let mut exported_components: Vec<(String, Span)> = Vec::new();
 
+        // Helper function to register a component as exported
+        fn register_component(
+            name: String,
+            span: Span,
+            exported_components: &mut Vec<(String, Span)>,
+            component_declarations: &mut HashMap<String, Span>,
+        ) {
+            exported_components.push((name.clone(), span));
+            component_declarations.insert(name, span);
+        }
+
         // Parse __export() calls to extract exports (common in bundled/compiled code)
         for statement in program.body.iter() {
             if let Statement::ExpressionStatement(expr_stmt) = statement
@@ -188,13 +199,28 @@ impl Guest for AnalyzeReactBoundary {
             match statement {
                 // Handle default exports: export default ComponentName
                 Statement::ExportDefaultDeclaration(export_decl) => {
-                    if let ExportDefaultDeclarationKind::Identifier(ident) =
-                        &export_decl.declaration
-                    {
-                        let name = ident.name.to_string();
-                        if let Some(&span) = component_declarations.get(&name) {
-                            exported_components.push((name, span));
+                    match &export_decl.declaration {
+                        ExportDefaultDeclarationKind::Identifier(ident) => {
+                            let name = ident.name.to_string();
+                            if let Some(&span) = component_declarations.get(&name) {
+                                exported_components.push((name, span));
+                            }
                         }
+                        // Handle inline function declaration: export default function MyComponent() {}
+                        ExportDefaultDeclarationKind::FunctionDeclaration(func_decl) => {
+                            if let Some((name, span)) = component::analyze_function_declaration(
+                                func_decl,
+                                &jsx_runtime_identifiers,
+                            ) {
+                                register_component(
+                                    name,
+                                    span,
+                                    &mut exported_components,
+                                    &mut component_declarations,
+                                );
+                            }
+                        }
+                        _ => {}
                     }
                 }
                 // Handle named exports: export const ComponentName = ... or export function ComponentName() {}
@@ -215,28 +241,27 @@ impl Guest for AnalyzeReactBoundary {
                                             &declarator.init,
                                             &jsx_runtime_identifiers,
                                         ) {
-                                            let span = ident.span;
-                                            exported_components.push((name.clone(), span));
-                                            component_declarations.insert(name, span);
+                                            register_component(
+                                                name,
+                                                ident.span,
+                                                &mut exported_components,
+                                                &mut component_declarations,
+                                            );
                                         }
                                     }
                                 }
                             }
                             Declaration::FunctionDeclaration(func_decl) => {
-                                if let Some(id) = &func_decl.id {
-                                    let name = id.name.to_string();
-
-                                    // Check if this is a React function component
-                                    if component::is_react_function_component(
-                                        &name,
-                                        &func_decl.return_type,
-                                        &func_decl.body,
-                                        &jsx_runtime_identifiers,
-                                    ) {
-                                        let span = id.span;
-                                        exported_components.push((name.clone(), span));
-                                        component_declarations.insert(name, span);
-                                    }
+                                if let Some((name, span)) = component::analyze_function_declaration(
+                                    func_decl,
+                                    &jsx_runtime_identifiers,
+                                ) {
+                                    register_component(
+                                        name,
+                                        span,
+                                        &mut exported_components,
+                                        &mut component_declarations,
+                                    );
                                 }
                             }
                             _ => {}
@@ -906,6 +931,60 @@ export { MyComponent, MyOtherComponent };
                 .iter()
                 .any(|c| c.name == "MyOtherComponent")
         );
+        assert!(result.components.iter().all(|c| c.is_client_component));
+    }
+
+    #[test]
+    fn test_analyze_inline_export_default_function() {
+        // Test export default function (inline declaration, not reference)
+        let source = r#"
+"use client";
+
+export default function MyComponent() {
+  return <div>Hello</div>;
+}
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            1,
+            "Should detect inline export default function declaration"
+        );
+        assert_eq!(result.components[0].name, "MyComponent");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_multiple_components_with_inline_default() {
+        // Test file with both named exports and inline default export
+        let source = r#"
+"use client";
+import type { FC } from "react";
+
+export const ClientUsesClientNamedFunction: FC = () => {
+  return <div>Named export</div>;
+};
+
+export default function ClientUsesClientDefaultFunction() {
+  return <div>Default export</div>;
+}
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            2,
+            "Should detect both named and inline default export"
+        );
+
+        let names: Vec<&str> = result.components.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"ClientUsesClientNamedFunction"));
+        assert!(names.contains(&"ClientUsesClientDefaultFunction"));
+
+        // All should be client components
         assert!(result.components.iter().all(|c| c.is_client_component));
     }
 }

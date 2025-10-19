@@ -24,7 +24,7 @@
     "build:esbuild": "node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
-    "watch:tests": "tsc -p . -w",
+    "watch:tsc": "tsc -p . --watch",
     "tsc": "tsc -p .",
     "lint": "oxlint --type-aware --fix --fix-suggestions --fix-dangerously",
     "test": "npm-run-all build test:*",

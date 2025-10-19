@@ -577,8 +577,8 @@ suite("Example Files Integration", () => {
 
     assert.strictEqual(
       result.components.length,
-      3,
-      "Should detect all three components",
+      4,
+      "Should detect all four components",
     );
     assert.ok(
       result.components.every((c) => c.isClientComponent),
@@ -597,6 +597,10 @@ suite("Example Files Integration", () => {
     assert.ok(
       names.includes("ClientComponentFunctionExport"),
       "Should detect function export component",
+    );
+    assert.ok(
+      names.includes("ClientComponent"),
+      "Should detect additional named export component",
     );
   });
 

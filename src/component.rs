@@ -1,9 +1,32 @@
 use oxc::ast::ast::TSTypeName::IdentifierReference;
 use oxc::ast::ast::{BindingPattern, Expression, Statement, TSType};
+use oxc::span::Span;
 
 // ============================================================================
 // PUBLIC API
 // ============================================================================
+
+/// Analyze a function declaration and return its name and span if it's a React component.
+/// Returns None if the function is not a React component.
+pub(crate) fn analyze_function_declaration(
+    func_decl: &oxc::ast::ast::Function,
+    jsx_runtime_identifiers: &std::collections::HashSet<String>,
+) -> Option<(String, Span)> {
+    if let Some(id) = &func_decl.id {
+        let name = id.name.to_string();
+
+        // Check if this is a React function component
+        if is_react_function_component(
+            &name,
+            &func_decl.return_type,
+            &func_decl.body,
+            jsx_runtime_identifiers,
+        ) {
+            return Some((name, id.span));
+        }
+    }
+    None
+}
 
 /// Main function to check if a variable declaration is a React component
 pub(crate) fn is_react_component(
