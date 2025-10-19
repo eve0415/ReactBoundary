@@ -1,0 +1,121 @@
+name: CI/Typescript
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    name: Check Build
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install wasm-tools
+        run: cargo install wasm-tools
+
+      - name: Generate WIT bindings
+        run: wit2ts --outDir ./src ./wit
+
+      - name: Build extension
+        run: node esbuild.js
+        env:
+          NODE_ENV: production
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Set up xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build tests
+        run: tsc -p tsconfig.test.json
+
+      - name: Run tests
+        run: xvfb-run -a vscode-test --coverage --coverage-reporter=lcov --coverage-reporter=json
+
+  lint:
+    name: Check Lint
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install wasm-tools
+        run: cargo install wasm-tools
+
+      - name: Generate WIT bindings
+        run: wit2ts --outDir ./src ./wit
+
+      - name: Run oxlint
+        uses: oxc-project/oxlint-action@v2.0.1
+        with:
+          config: .oxlintrc.json
+          deny-warnings: true
+
+  types:
+    name: Check Types
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install wasm-tools
+        run: cargo install wasm-tools
+
+      - name: Generate WIT bindings
+        run: wit2ts --outDir ./src ./wit
+
+      - name: Check types
+        run: tsc -p tsconfig.json & tsc -p tsconfig.test.json & tsc -p tsconfig.react.json
