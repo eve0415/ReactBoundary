@@ -10,4 +10,8 @@ export const ClientComponentNamedExport: FC = () => {
   return <div>This is a client-side component. (Named export)</div>;
 };
 
+export function ClientComponentFunctionExport() {
+  return <div>This is a client-side component. (Function export)</div>;
+}
+
 export default ClientComponentDefaultExport;

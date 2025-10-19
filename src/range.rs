@@ -33,8 +33,8 @@ pub(crate) fn span_to_range(source: &str, span: Span) -> types::Range {
 /// This is useful for import sources where we need the position inside the quoted string
 pub(crate) fn string_literal_to_range(source: &str, span: Span) -> types::Range {
     types::Range {
-        start: offset_to_position(source, span.start + 1), // +1 to skip opening quote
-        end: offset_to_position(source, span.end - 1),     // -1 to skip closing quote
+        start: offset_to_position(source, span.start + 1), // +1 to skip the opening quote
+        end: offset_to_position(source, span.end - 1),     // -1 to skip the closing quote
     }
 }
 
@@ -55,7 +55,7 @@ mod tests {
     #[test]
     fn test_offset_to_position_multi_line() {
         let source = "const x = 10;\nconst y = 20;";
-        let position = offset_to_position(source, 20); // Points to 'y' on second line
+        let position = offset_to_position(source, 20); // Points to 'y' on the second line
 
         assert_eq!(position.line, 1);
         assert_eq!(position.character, 6);

@@ -333,23 +333,17 @@ export function Component() {
 
     const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    // Note: The current analyzer implementation may not detect function declarations
-    // This is a known limitation - it primarily focuses on arrow functions and const declarations
-    // If components are detected, verify they're marked as client components
-    if (result.components.length > 0) {
-      assert.strictEqual(
-        result.components[0].isClientComponent,
-        true,
-        "Should be client component",
-      );
-      assert.strictEqual(
-        result.components[0].name,
-        "Component",
-        "Should identify component name",
-      );
-    }
-    // For now, we just verify the analyzer doesn't crash on function declarations
-    assert.ok(result, "Should return a result without crashing");
+    assert.ok(result.components.length > 0, "Should detect function declaration");
+    assert.strictEqual(
+      result.components[0].isClientComponent,
+      true,
+      "Should be client component",
+    );
+    assert.strictEqual(
+      result.components[0].name,
+      "Component",
+      "Should identify component name",
+    );
   });
 
   test("should handle default exports", () => {
@@ -581,7 +575,11 @@ suite("Example Files Integration", () => {
 
     const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result.components.length >= 2, "Should detect both components");
+    assert.strictEqual(
+      result.components.length,
+      3,
+      "Should detect all three components",
+    );
     assert.ok(
       result.components.every((c) => c.isClientComponent),
       "All components should be client components",
@@ -595,6 +593,10 @@ suite("Example Files Integration", () => {
     assert.ok(
       names.includes("ClientComponentNamedExport"),
       "Should detect named export component",
+    );
+    assert.ok(
+      names.includes("ClientComponentFunctionExport"),
+      "Should detect function export component",
     );
   });
 
@@ -634,18 +636,26 @@ suite("Example Files Integration", () => {
       importInfo.identifier.includes("ClientComponentNamedExport"),
       "Should detect named import",
     );
+    assert.ok(
+      importInfo.identifier.includes("ClientComponentFunctionExport"),
+      "Should detect function export import",
+    );
 
     // Should detect JSX usages
     assert.strictEqual(
       result.jsxUsages.length,
-      2,
-      "Should detect both client component usages",
+      3,
+      "Should detect all three client component usages",
     );
     const usageNames = result.jsxUsages.map((u) => u.componentName).sort();
     assert.deepStrictEqual(
       usageNames,
-      ["ClientComponentDefaultExport", "ClientComponentNamedExport"],
-      "Should track both imported component usages",
+      [
+        "ClientComponentDefaultExport",
+        "ClientComponentFunctionExport",
+        "ClientComponentNamedExport",
+      ],
+      "Should track all imported component usages",
     );
   });
 });

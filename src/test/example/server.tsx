@@ -1,5 +1,6 @@
 import type { FC } from "react";
 import ClientComponentDefaultExport, {
+  ClientComponentFunctionExport,
   ClientComponentNamedExport,
 } from "./client";
 
@@ -9,6 +10,7 @@ const ServerComponent: FC = () => {
       This is a server-side component.
       <ClientComponentDefaultExport />
       <ClientComponentNamedExport />
+      <ClientComponentFunctionExport />
     </div>
   );
 };

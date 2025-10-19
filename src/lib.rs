@@ -102,19 +102,37 @@ impl Guest for AnalyzeReactBoundary {
         // Track all React component declarations with their spans
         let mut component_declarations: HashMap<String, Span> = HashMap::new();
 
-        // First pass: identify all React component variable declarations
+        // First pass: identify all React component variable declarations and function declarations
         for statement in program.body.iter() {
-            if let Statement::VariableDeclaration(var_decl) = statement {
-                for declarator in var_decl.declarations.iter() {
-                    if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
-                        let name = ident.name.to_string();
+            match statement {
+                Statement::VariableDeclaration(var_decl) => {
+                    for declarator in var_decl.declarations.iter() {
+                        if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
+                            let name = ident.name.to_string();
 
-                        // Check if this is a React component
-                        if analyze::is_react_component(&name, &declarator.id, &declarator.init) {
-                            component_declarations.insert(name, ident.span);
+                            // Check if this is a React component
+                            if analyze::is_react_component(&name, &declarator.id, &declarator.init)
+                            {
+                                component_declarations.insert(name, ident.span);
+                            }
                         }
                     }
                 }
+                Statement::FunctionDeclaration(func_decl) => {
+                    if let Some(id) = &func_decl.id {
+                        let name = id.name.to_string();
+
+                        // Check if this is a React function component
+                        if analyze::is_react_function_component(
+                            &name,
+                            &func_decl.return_type,
+                            &func_decl.body,
+                        ) {
+                            component_declarations.insert(name, id.span);
+                        }
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -134,28 +152,47 @@ impl Guest for AnalyzeReactBoundary {
                         }
                     }
                 }
-                // Handle named exports: export const ComponentName = ...
+                // Handle named exports: export const ComponentName = ... or export function ComponentName() {}
                 Statement::ExportNamedDeclaration(export_decl) => {
-                    if let Some(declaration) = &export_decl.declaration
-                        && let Declaration::VariableDeclaration(var_decl) = declaration
-                    {
-                        for declarator in var_decl.declarations.iter() {
-                            if let BindingPatternKind::BindingIdentifier(ident) =
-                                &declarator.id.kind
-                            {
-                                let name = ident.name.to_string();
+                    if let Some(declaration) = &export_decl.declaration {
+                        match declaration {
+                            Declaration::VariableDeclaration(var_decl) => {
+                                for declarator in var_decl.declarations.iter() {
+                                    if let BindingPatternKind::BindingIdentifier(ident) =
+                                        &declarator.id.kind
+                                    {
+                                        let name = ident.name.to_string();
 
-                                // Check if this is a React component
-                                if analyze::is_react_component(
-                                    &name,
-                                    &declarator.id,
-                                    &declarator.init,
-                                ) {
-                                    let span = ident.span;
-                                    exported_components.push((name.clone(), span));
-                                    component_declarations.insert(name, span);
+                                        // Check if this is a React component
+                                        if analyze::is_react_component(
+                                            &name,
+                                            &declarator.id,
+                                            &declarator.init,
+                                        ) {
+                                            let span = ident.span;
+                                            exported_components.push((name.clone(), span));
+                                            component_declarations.insert(name, span);
+                                        }
+                                    }
                                 }
                             }
+                            Declaration::FunctionDeclaration(func_decl) => {
+                                if let Some(id) = &func_decl.id {
+                                    let name = id.name.to_string();
+
+                                    // Check if this is a React function component
+                                    if analyze::is_react_function_component(
+                                        &name,
+                                        &func_decl.return_type,
+                                        &func_decl.body,
+                                    ) {
+                                        let span = id.span;
+                                        exported_components.push((name.clone(), span));
+                                        component_declarations.insert(name, span);
+                                    }
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -260,7 +297,7 @@ export default ServerComponent;
 
         let result = analyze_tsx(source).unwrap();
 
-        // Should detect component but not mark as client
+        // Should detect a component but not mark as a client
         assert_eq!(result.components.len(), 1);
         assert_eq!(result.components[0].name, "ServerComponent");
         assert!(!result.components[0].is_client_component);
@@ -556,5 +593,48 @@ export default MyComponent;
         //                ^--- should be around character 15
         assert!(import.source_span.start.character >= 14);
         assert!(import.source_span.start.character <= 16);
+    }
+
+    #[test]
+    fn test_analyze_function_declaration_export() {
+        let source = r#"
+"use client";
+
+export function MyComponent() {
+  return <div>Function Declaration</div>;
+}
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.components.len(), 1);
+        assert_eq!(result.components[0].name, "MyComponent");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_mixed_exports() {
+        let source = r#"
+"use client";
+
+export const ArrowComponent = () => <div>Arrow</div>;
+export function FunctionComponent() {
+  return <div>Function</div>;
+}
+const DefaultComponent = () => <div>Default</div>;
+export default DefaultComponent;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(result.components.len(), 3);
+
+        let names: Vec<&str> = result.components.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"ArrowComponent"));
+        assert!(names.contains(&"FunctionComponent"));
+        assert!(names.contains(&"DefaultComponent"));
+
+        // All should be client components
+        assert!(result.components.iter().all(|c| c.is_client_component));
     }
 }

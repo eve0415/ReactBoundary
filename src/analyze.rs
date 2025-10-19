@@ -104,6 +104,34 @@ pub(crate) fn is_react_component(
     false
 }
 
+/// Check if a function declaration is a React component
+pub(crate) fn is_react_function_component(
+    name: &str,
+    return_type: &Option<oxc::allocator::Box<oxc::ast::ast::TSTypeAnnotation>>,
+    body: &Option<oxc::allocator::Box<oxc::ast::ast::FunctionBody>>,
+) -> bool {
+    // Check 1: PascalCase naming convention
+    let is_pascal_case = name.chars().next().is_some_and(|c| c.is_uppercase());
+
+    if !is_pascal_case {
+        return false;
+    }
+
+    // Check 2: Has React return type annotation
+    if let Some(type_annotation) = return_type
+        && is_react_type_annotation(&type_annotation.type_annotation)
+    {
+        return true;
+    }
+
+    // Check 3: Contains JSX return in the function body
+    if let Some(func_body) = body {
+        return has_jsx_return(&func_body.statements);
+    }
+
+    false
+}
+
 /// Recursively collect JSX element usages from a JSXElement
 fn collect_jsx_from_element(
     jsx_elem: &oxc::ast::ast::JSXElement,
@@ -214,15 +242,13 @@ fn collect_jsx_from_statement(stmt: &Statement, usages: &mut Vec<(String, Span)>
                 collect_jsx_from_expression(expr, usages);
             } else {
                 // Handle FunctionDeclaration case
-                match &export_decl.declaration {
-                    oxc::ast::ast::ExportDefaultDeclarationKind::FunctionDeclaration(func_decl) => {
-                        if let Some(body) = &func_decl.body {
-                            for stmt in body.statements.iter() {
-                                collect_jsx_from_statement(stmt, usages);
-                            }
-                        }
+                if let oxc::ast::ast::ExportDefaultDeclarationKind::FunctionDeclaration(func_decl) =
+                    &export_decl.declaration
+                    && let Some(body) = &func_decl.body
+                {
+                    for stmt in body.statements.iter() {
+                        collect_jsx_from_statement(stmt, usages);
                     }
-                    _ => {}
                 }
             }
         }
@@ -241,7 +267,7 @@ fn collect_jsx_from_statement(stmt: &Statement, usages: &mut Vec<(String, Span)>
     }
 }
 
-/// Public function to collect all JSX usages from program body
+/// Public function to collect all JSX usages from the program body
 pub(crate) fn collect_jsx_usages(statements: &[Statement]) -> Vec<(String, Span)> {
     let mut usages = Vec::new();
     for statement in statements {
@@ -280,7 +306,7 @@ mod tests {
             let declarator = &var_decl.declarations[0];
             if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
                 let result =
-                    is_react_component(&ident.name.to_string(), &declarator.id, &declarator.init);
+                    is_react_component(ident.name.as_ref(), &declarator.id, &declarator.init);
                 assert!(result, "PascalCase component with JSX should be detected");
             }
         }
@@ -302,7 +328,7 @@ mod tests {
             let declarator = &var_decl.declarations[0];
             if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
                 let result =
-                    is_react_component(&ident.name.to_string(), &declarator.id, &declarator.init);
+                    is_react_component(ident.name.as_ref(), &declarator.id, &declarator.init);
                 assert!(!result, "camelCase should not be detected as component");
             }
         }
@@ -324,7 +350,7 @@ mod tests {
             let declarator = &var_decl.declarations[0];
             if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
                 let result =
-                    is_react_component(&ident.name.to_string(), &declarator.id, &declarator.init);
+                    is_react_component(ident.name.as_ref(), &declarator.id, &declarator.init);
                 assert!(
                     result,
                     "Component with FC type annotation should be detected"
@@ -349,7 +375,7 @@ mod tests {
             let declarator = &var_decl.declarations[0];
             if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
                 let result =
-                    is_react_component(&ident.name.to_string(), &declarator.id, &declarator.init);
+                    is_react_component(ident.name.as_ref(), &declarator.id, &declarator.init);
                 assert!(
                     !result,
                     "PascalCase without JSX or type should not be detected"
@@ -504,12 +530,93 @@ mod tests {
             let declarator = &var_decl.declarations[0];
             if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
                 let result =
-                    is_react_component(&ident.name.to_string(), &declarator.id, &declarator.init);
+                    is_react_component(ident.name.as_ref(), &declarator.id, &declarator.init);
                 assert!(
                     result,
                     "Arrow function with direct JSX return should be detected"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_function_declaration_with_jsx() {
+        let source = r#"
+            function MyComponent() {
+                return <div>Hello</div>;
+            }
+        "#;
+
+        let allocator = Allocator::default();
+        let ret = Parser::new(&allocator, source, SourceType::tsx()).parse();
+        let program = ret.program;
+
+        if let Statement::FunctionDeclaration(func_decl) = &program.body[0]
+            && let Some(id) = &func_decl.id
+        {
+            let result = is_react_function_component(
+                id.name.as_ref(),
+                &func_decl.return_type,
+                &func_decl.body,
+            );
+            assert!(
+                result,
+                "Function declaration with JSX return should be detected"
+            );
+        }
+    }
+
+    #[test]
+    fn test_function_declaration_camelcase_should_fail() {
+        let source = r#"
+            function myFunction() {
+                return <div>Hello</div>;
+            }
+        "#;
+
+        let allocator = Allocator::default();
+        let ret = Parser::new(&allocator, source, SourceType::tsx()).parse();
+        let program = ret.program;
+
+        if let Statement::FunctionDeclaration(func_decl) = &program.body[0]
+            && let Some(id) = &func_decl.id
+        {
+            let result = is_react_function_component(
+                id.name.as_ref(),
+                &func_decl.return_type,
+                &func_decl.body,
+            );
+            assert!(
+                !result,
+                "camelCase function should not be detected as component"
+            );
+        }
+    }
+
+    #[test]
+    fn test_function_declaration_no_jsx_should_fail() {
+        let source = r#"
+            function MyFunction() {
+                return "hello";
+            }
+        "#;
+
+        let allocator = Allocator::default();
+        let ret = Parser::new(&allocator, source, SourceType::tsx()).parse();
+        let program = ret.program;
+
+        if let Statement::FunctionDeclaration(func_decl) = &program.body[0]
+            && let Some(id) = &func_decl.id
+        {
+            let result = is_react_function_component(
+                id.name.as_ref(),
+                &func_decl.return_type,
+                &func_decl.body,
+            );
+            assert!(
+                !result,
+                "Function without JSX should not be detected as component"
+            );
         }
     }
 }
