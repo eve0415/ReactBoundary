@@ -19,7 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.extensionUri,
     "target",
     "wasm32-unknown-unknown",
-    "debug",
+    process.env.NODE_ENV === "production" ? "release" : "debug",
     "check_react_boundary.wasm",
   );
   const bits = await vscode.workspace.fs.readFile(filename);

@@ -1,7 +1,10 @@
 .vscode/**
 .vscode-test/**
+.idea/**
+.run/**
 out/**
 node_modules/**
+.pnpm-store/**
 src/**
 .gitignore
 .yarnrc
@@ -12,3 +15,13 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+*.json
+*.md
+.claude/**
+.codex/**
+.devcontainer/**
+wit/**
+coverage/**
+Cargo.*
+target/**
+!target/wasm32-unknown-unknown/release/check_react_boundary.*
