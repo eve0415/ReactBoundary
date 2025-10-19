@@ -2,38 +2,40 @@ This file provides guidance to AI when working with code in this repository.
 
 ## Project Overview
 
-ReactBoundary is a VS Code extension that detects and highlights React Server Component (RSC) boundaries. It identifies when client components are imported and used in React applications, helping developers understand what gets included in the client bundle and think carefully about performance implications (prop sizes, etc).
+ReactBoundary is a VS Code extension that detects and highlights Client Component boundaries in React applications using the RSC (React Server Components) architecture. It identifies components with `"use client"` directive, helping developers understand what gets included in the client bundle and think carefully about performance implications (prop sizes, etc).
 
-## Design Philosophy & React RSC Model
+## Design Philosophy & Component Model
 
 ### Extension Purpose
-This extension **visualizes** client boundaries, not warns or prevents them. Client boundaries are normal and necessary - the goal is to help developers:
-- Remember when components are client-side rendering
-- Think carefully about prop sizes and data passed across boundaries
+This extension **visualizes** Client Components (components with `"use client"` directive), not warns or prevents them. Client Components are normal and necessary - the goal is to help developers:
+- Identify which components are always Client Components (have `"use client"` directive)
+- Think carefully about prop sizes and data passed to Client Components
 - Understand what code gets included in the client bundle
 
-### Critical RSC Insight: Dual-Mode Components
-**A component without `"use client"` can run on BOTH server AND client depending on import context.**
+### Critical Insight: Dual-Mode Components
+**A component without `"use client"` can render on BOTH server AND client depending on where it's imported.**
 
 Example:
 ```tsx
-// SharedComponent.tsx (no "use client" directive)
+// SharedComponent.tsx (no "use client" directive - dual-mode)
 export const SharedComponent = () => <div>Shared</div>
 
-// ServerPage.tsx (no "use client")
+// Page.tsx (no "use client" - this file can be Server Component)
 import { SharedComponent } from './SharedComponent'
-export default () => <SharedComponent /> // SharedComponent runs on SERVER
+export default () => <SharedComponent /> // SharedComponent renders on server here
 
-// ClientButton.tsx
+// Button.tsx (has "use client" - this is a Client Component)
 "use client"
 import { SharedComponent } from './SharedComponent'
-export default () => <SharedComponent /> // SharedComponent runs on CLIENT
+export default () => <SharedComponent /> // SharedComponent renders on client here
 ```
 
-**Implication:** The extension tracks components based on **direct file `"use client"` directive**, NOT transitive dependencies. This is correct per React's model - only files with explicit directives are always-client.
+**Implication:** The extension tracks components based on **direct file `"use client"` directive**, NOT transitive dependencies. This is correct because:
+- Components WITH `"use client"` = Always Client Components
+- Components WITHOUT `"use client"` = Dual-mode (can be server or client depending on caller)
 
 ### Why No Transitive Dependency Tracking
-Transitive tracking would incorrectly mark dual-mode components as "always client". The current implementation correctly checks only if the imported file itself has `"use client"`, which aligns with React's actual behavior.
+Transitive tracking would incorrectly mark dual-mode components as "always Client Components". The current implementation correctly checks only if the imported file itself has `"use client"`, which aligns with how React actually works.
 
 ## Architecture
 
@@ -78,11 +80,11 @@ This is a **hybrid TypeScript/Rust codebase** that uses WebAssembly to bridge be
 3. **Import Resolution**: TypeScript uses VS Code's `executeDefinitionProvider` to resolve import paths
    - Handles declaration files (.d.ts) by finding actual implementation files (.tsx, .ts, etc.)
    - Supports unsaved changes by checking in-memory documents first
-4. **Cross-File Analysis**: For each import, reads target file and analyzes if it contains client components (checks for `"use client"` directive in the imported file)
-5. **Context Check**: Determines if current file is a client component
+4. **Cross-File Analysis**: For each import, reads target file and analyzes if it contains Client Components (checks for `"use client"` directive in the imported file)
+5. **Context Check**: Determines if current file has `"use client"` directive
 6. **Decoration**: Applies inline decorations showing "⚡ Client Boundary":
    - Gray decoration on component declarations with `"use client"` directive (always shown)
-   - Orange decoration on JSX usages of imported client components (only when current file is server context)
+   - Orange decoration on JSX usages of imported Client Components (only shown in files without `"use client"` directive)
 
 ## Build & Development Commands
 
@@ -176,12 +178,12 @@ The extension reads from the in-memory document buffer (via `document.getText()`
 ### Decoration Types (src/decorations.ts)
 Two decoration types are used:
 - `componentDecoration`: Gray "⚡ Client Boundary", applied to local component declarations with `"use client"` (always shown)
-- `usageDecoration`: Orange "⚡ Client Boundary", applied to JSX usages of imported client components (only when in server context)
+- `usageDecoration`: Orange "⚡ Client Boundary", applied to JSX usages of imported Client Components (only shown in files without `"use client"` directive)
 
 ### Context-Aware Decoration Logic
 The extension implements context-aware decorations to avoid visual noise:
-- **In server files** (no `"use client"`): Shows orange decorations on client component usages (marks server→client boundary)
-- **In client files** (has `"use client"`): Hides orange decorations on client component usages (client→client is not a boundary)
+- **In files without `"use client"`**: Shows orange decorations on Client Component usages (marks where Client Components are used)
+- **In files with `"use client"`**: Hides orange decorations on Client Component usages (already a Client Component, so no boundary crossed)
 - **Gray decorations**: Always shown on component declarations with `"use client"` directive
 
 This is implemented in `src/analyzer.ts` by checking `analyzed.components.some(c => c.isClientComponent)` before applying usage decorations.
@@ -211,9 +213,9 @@ Located in `src/test/`:
 - `analyzer.test.ts` - Unit tests for TypeScript analysis logic
 - `extension.test.ts` - Integration tests for VS Code extension behavior
 - `example/` - Sample React files for testing:
-  - `client.tsx` - Client component with `"use client"` directive
-  - `server.tsx` - Server component importing client components
-  - `client-uses-client.tsx` - Client component importing another client component (tests context-aware decorations)
+  - `client.tsx` - Client Component with `"use client"` directive
+  - `server.tsx` - File without `"use client"` directive that imports Client Components
+  - `client-uses-client.tsx` - Client Component importing another Client Component (tests context-aware decorations)
 
 ## Important Constraints
 

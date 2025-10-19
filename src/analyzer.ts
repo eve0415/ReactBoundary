@@ -7,7 +7,7 @@ import {
 } from "./import-resolver";
 
 /**
- * Analyze a document and decorate client components
+ * Analyze a document and decorate Client Components
  */
 export async function analyzeDocument(
   editor: vscode.TextEditor | undefined,
@@ -32,7 +32,7 @@ export async function analyzeDocument(
   const componentRanges: vscode.Range[] = [];
   const usageRanges: vscode.Range[] = [];
 
-  // Decorate local client components
+  // Decorate local Client Components
   for (const component of analyzed.components) {
     if (component.isClientComponent) {
       // Place decoration at the end of the line for cleaner appearance
@@ -43,7 +43,7 @@ export async function analyzeDocument(
     }
   }
 
-  // Check which imports are client components
+  // Check which imports are Client Components
   const clientComponentImports = new Set<string>();
 
   for (const importInfo of analyzed.imports) {
@@ -73,10 +73,10 @@ export async function analyzeDocument(
             importedExtension,
           );
 
-          // Check if the imported file has client components
+          // Check if the imported file has Client Components
           for (const component of importedAnalyzed.components) {
             if (component.isClientComponent) {
-              // Add all identifiers from this import as client components
+              // Add all identifiers from this import as Client Components
               for (const identifier of importInfo.identifier) {
                 clientComponentImports.add(identifier);
               }
@@ -90,13 +90,13 @@ export async function analyzeDocument(
     }
   }
 
-  // Check if current file is already a client component
-  // If so, don't decorate client component usages (client→client is not a boundary)
+  // Check if current file has "use client" directive
+  // If so, don't decorate Client Component usages (already a Client Component)
   const isCurrentFileClient = analyzed.components.some(
     (c) => c.isClientComponent,
   );
 
-  // Decorate JSX usages of client components only when in server context
+  // Decorate JSX usages of Client Components only in files without "use client"
   if (!isCurrentFileClient) {
     for (const usage of analyzed.jsxUsages) {
       if (clientComponentImports.has(usage.componentName)) {
@@ -121,10 +121,10 @@ export async function analyzeDocument(
   // Log summary for users
   if (clientComponentImports.size > 0) {
     channel.info(
-      `→ Found ${clientComponentImports.size} client component import${clientComponentImports.size === 1 ? "" : "s"}: ${Array.from(clientComponentImports).join(", ")}`,
+      `→ Found ${clientComponentImports.size} Client Component import${clientComponentImports.size === 1 ? "" : "s"}: ${Array.from(clientComponentImports).join(", ")}`,
     );
   }
   if (usageRanges.length > 0) {
-    channel.info(`→ Highlighted ${usageRanges.length} client component usage${usageRanges.length === 1 ? "" : "s"} (server → client boundaries)`);
+    channel.info(`→ Highlighted ${usageRanges.length} Client Component usage${usageRanges.length === 1 ? "" : "s"}`);
   }
 }
