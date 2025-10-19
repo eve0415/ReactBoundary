@@ -17,13 +17,14 @@
     "vscode": {
       "extensions": [
         "oxc.oxc-vscode",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
         "rust-lang.rust-analyzer",
         "bytecodealliance.wit-idl",
         "ms-vscode.extension-test-runner",
         "ms-azuretools.vscode-docker",
         "github.vscode-github-actions",
         "GitHub.vscode-pull-request-github",
-        "EditorConfig.EditorConfig",
         "Anthropic.claude-code",
         "google.gemini-cli-vscode-ide-companion",
         "openai.chatgpt"

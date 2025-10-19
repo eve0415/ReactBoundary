@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import type { FC } from "react";
-import { ClientComponentNamedExport } from "./client";
+import { ClientComponentNamedExport } from './client';
+import type { FC } from 'react';
 
 // This client component uses another client component
 // Should NOT show orange decoration on <ClientComponentNamedExport />

@@ -90,6 +90,30 @@ jobs:
           config: .oxlintrc.json
           deny-warnings: true
 
+  format:
+    name: Check Format
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Format
+        run: pnpm oxfmt --check
+
   types:
     name: Check Types
     runs-on: ubuntu-24.04-arm

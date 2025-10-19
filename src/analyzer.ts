@@ -1,10 +1,10 @@
-import * as vscode from "vscode";
-import { analyzeReactBoundary } from "./analyzeReactBoundary";
-import { componentDecoration, usageDecoration } from "./decorations";
+import { analyzeReactBoundary } from './analyzeReactBoundary';
+import { componentDecoration, usageDecoration } from './decorations';
 import {
   resolveImportedIdentifier,
   findImplementationFile,
-} from "./import-resolver";
+} from './import-resolver';
+import * as vscode from 'vscode';
 
 /**
  * Analyze a document and decorate Client Components
@@ -19,7 +19,7 @@ export async function analyzeDocument(
 
   const document = editor.document;
 
-  const extension = document.uri.path.split(".").pop();
+  const extension = document.uri.path.split('.').pop();
   if (!extension) {
     return;
   }
@@ -48,10 +48,7 @@ export async function analyzeDocument(
 
   for (const importInfo of analyzed.imports) {
     try {
-      const resolvedUri = await resolveImportedIdentifier(
-        importInfo,
-        document,
-      );
+      const resolvedUri = await resolveImportedIdentifier(importInfo, document);
 
       if (resolvedUri) {
         // Try to find the implementation file if we resolved to a declaration file
@@ -60,12 +57,12 @@ export async function analyzeDocument(
 
         // Try to get the open document first (for unsaved changes), otherwise read from disk
         const openDoc = vscode.workspace.textDocuments.find(
-          (doc) => doc.uri.toString() === fileUri.toString(),
+          doc => doc.uri.toString() === fileUri.toString(),
         );
         const importedFileContent = openDoc
           ? new TextEncoder().encode(openDoc.getText())
           : await vscode.workspace.fs.readFile(fileUri);
-        const importedExtension = fileUri.path.split(".").pop();
+        const importedExtension = fileUri.path.split('.').pop();
 
         if (importedExtension) {
           const importedAnalyzed = api.analyze(
@@ -93,7 +90,7 @@ export async function analyzeDocument(
   // Check if current file has "use client" directive
   // If so, don't decorate Client Component usages (already a Client Component)
   const isCurrentFileClient = analyzed.components.some(
-    (c) => c.isClientComponent,
+    c => c.isClientComponent,
   );
 
   // Decorate JSX usages of Client Components only in files without "use client"
@@ -121,10 +118,16 @@ export async function analyzeDocument(
   // Log summary for users
   if (clientComponentImports.size > 0) {
     channel.info(
-      `→ Found ${clientComponentImports.size} Client Component import${clientComponentImports.size === 1 ? "" : "s"}: ${Array.from(clientComponentImports).join(", ")}`,
+      `→ Found ${clientComponentImports.size} Client Component import${
+        clientComponentImports.size === 1 ? '' : 's'
+      }: ${Array.from(clientComponentImports).join(', ')}`,
     );
   }
   if (usageRanges.length > 0) {
-    channel.info(`→ Highlighted ${usageRanges.length} Client Component usage${usageRanges.length === 1 ? "" : "s"}`);
+    channel.info(
+      `→ Highlighted ${usageRanges.length} Client Component usage${
+        usageRanges.length === 1 ? '' : 's'
+      }`,
+    );
   }
 }

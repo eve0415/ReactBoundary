@@ -1,10 +1,10 @@
-import { Memory, WasmContext } from "@vscode/wasm-component-model";
-import * as assert from "assert";
-import * as vscode from "vscode";
-import { analyzeDocument } from "../analyzer";
-import { analyzeReactBoundary } from "../analyzeReactBoundary";
+import { analyzeDocument } from '../analyzer';
+import { analyzeReactBoundary } from '../analyzeReactBoundary';
+import { Memory, WasmContext } from '@vscode/wasm-component-model';
+import * as assert from 'assert';
+import * as vscode from 'vscode';
 
-suite("Document Analysis", () => {
+suite('Document Analysis', () => {
   let api: analyzeReactBoundary.Exports;
   let mockChannel: vscode.LogOutputChannel;
 
@@ -15,10 +15,10 @@ suite("Document Analysis", () => {
     const workspaceFolder = vscode.workspace.workspaceFolders![0].uri;
     const filename = vscode.Uri.joinPath(
       workspaceFolder,
-      "target",
-      "wasm32-unknown-unknown",
-      "debug",
-      "check_react_boundary.wasm",
+      'target',
+      'wasm32-unknown-unknown',
+      'debug',
+      'check_react_boundary.wasm',
     );
     const bits = await vscode.workspace.fs.readFile(filename);
     const module = await WebAssembly.compile(bits as Uint8Array<ArrayBuffer>);
@@ -54,22 +54,22 @@ suite("Document Analysis", () => {
       show: () => {},
       hide: () => {},
       dispose: () => {},
-      name: "MockChannel",
+      name: 'MockChannel',
       logLevel: vscode.LogLevel.Info,
       onDidChangeLogLevel: new vscode.EventEmitter<vscode.LogLevel>().event,
     } as vscode.LogOutputChannel;
   });
 
-  test("should handle undefined editor", async () => {
+  test('should handle undefined editor', async () => {
     // Should not throw when editor is undefined
     await analyzeDocument(undefined, api, mockChannel);
-    assert.ok(true, "Should handle undefined editor gracefully");
+    assert.ok(true, 'Should handle undefined editor gracefully');
   });
 
-  test("should handle untitled documents", async () => {
+  test('should handle untitled documents', async () => {
     // Create a new untitled document
     const doc = await vscode.workspace.openTextDocument({
-      language: "typescriptreact",
+      language: 'typescriptreact',
       content:
         '"use client";\nexport const Button = () => <button>Test</button>;',
     });
@@ -77,22 +77,22 @@ suite("Document Analysis", () => {
 
     // Should not throw for untitled documents
     await analyzeDocument(editor, api, mockChannel);
-    assert.ok(true, "Should handle untitled documents gracefully");
+    assert.ok(true, 'Should handle untitled documents gracefully');
 
     // Clean up
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
   });
 
-  test("should analyze client component file", async function () {
+  test('should analyze client component file', async function () {
     this.timeout(10000);
 
     // Open the client.tsx example file
     const clientUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders![0].uri,
-      "src",
-      "test",
-      "example",
-      "client.tsx",
+      'src',
+      'test',
+      'example',
+      'client.tsx',
     );
     const doc = await vscode.workspace.openTextDocument(clientUri);
     const editor = await vscode.window.showTextDocument(doc);
@@ -101,28 +101,29 @@ suite("Document Analysis", () => {
     await analyzeDocument(editor, api, mockChannel);
 
     // Verify the function completes without errors
-    assert.ok(true, "Should analyze client component file successfully");
+    assert.ok(true, 'Should analyze client component file successfully');
 
     // Clean up
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
   });
 
-  test("should analyze server component file with client component imports", async function () {
+  test('should analyze server component file with client component imports', async function () {
     this.timeout(10000);
 
     // Open the server.tsx example file (imports client components)
     const serverUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders![0].uri,
-      "src",
-      "test",
-      "example",
-      "server.tsx",
+      'src',
+      'test',
+      'example',
+      'server.tsx',
     );
     const doc = await vscode.workspace.openTextDocument(serverUri);
     const editor = await vscode.window.showTextDocument(doc);
 
     // Track channel calls
     let infoCallCount = 0;
+    // oxlint-disable-next-line unbound-method
     const originalInfo = mockChannel.info;
     mockChannel.info = (message: string) => {
       infoCallCount++;
@@ -133,35 +134,35 @@ suite("Document Analysis", () => {
     await analyzeDocument(editor, api, mockChannel);
 
     // Should have called info for detected client components
-    assert.ok(infoCallCount >= 0, "Should log analysis results");
+    assert.ok(infoCallCount >= 0, 'Should log analysis results');
 
     // Restore
     mockChannel.info = originalInfo;
 
     // Clean up
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
   });
 
-  test("should handle files without extensions", async function () {
+  test('should handle files without extensions', async function () {
     this.timeout(10000);
 
     // Create a document with no extension
     const content = '"use client";\nexport const Test = () => <div>Test</div>;';
     const doc = await vscode.workspace.openTextDocument({
-      language: "typescriptreact",
+      language: 'typescriptreact',
       content,
     });
     const editor = await vscode.window.showTextDocument(doc);
 
     // Should handle gracefully
     await analyzeDocument(editor, api, mockChannel);
-    assert.ok(true, "Should handle files without extensions");
+    assert.ok(true, 'Should handle files without extensions');
 
     // Clean up
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
   });
 
-  test("should analyze TypeScript React files", async function () {
+  test('should analyze TypeScript React files', async function () {
     this.timeout(10000);
 
     const content = `"use client";
@@ -175,7 +176,7 @@ export const TestComponent: FC = () => {
     // Save to a temp file with .tsx extension
     const tempUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders![0].uri,
-      "temp-test.tsx",
+      'temp-test.tsx',
     );
     await vscode.workspace.fs.writeFile(
       tempUri,
@@ -185,10 +186,10 @@ export const TestComponent: FC = () => {
     const savedEditor = await vscode.window.showTextDocument(savedDoc);
 
     await analyzeDocument(savedEditor, api, mockChannel);
-    assert.ok(true, "Should analyze TypeScript React files");
+    assert.ok(true, 'Should analyze TypeScript React files');
 
     // Clean up
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
     try {
       await vscode.workspace.fs.delete(tempUri);
     } catch {
@@ -196,7 +197,7 @@ export const TestComponent: FC = () => {
     }
   });
 
-  test("should handle non-React files", async function () {
+  test('should handle non-React files', async function () {
     this.timeout(10000);
 
     const content = `export function add(a: number, b: number): number {
@@ -206,7 +207,7 @@ export const TestComponent: FC = () => {
     // Save to a temp file with .ts extension
     const tempUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders![0].uri,
-      "temp-test.ts",
+      'temp-test.ts',
     );
     await vscode.workspace.fs.writeFile(
       tempUri,
@@ -216,10 +217,10 @@ export const TestComponent: FC = () => {
     const editor = await vscode.window.showTextDocument(doc);
 
     await analyzeDocument(editor, api, mockChannel);
-    assert.ok(true, "Should handle non-React files");
+    assert.ok(true, 'Should handle non-React files');
 
     // Clean up
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
     try {
       await vscode.workspace.fs.delete(tempUri);
     } catch {
@@ -227,14 +228,14 @@ export const TestComponent: FC = () => {
     }
   });
 
-  test("should read from document buffer not disk", async function () {
+  test('should read from document buffer not disk', async function () {
     this.timeout(10000);
 
     // Create a file with initial content
-    const initialContent = "export const Old = () => <div>Old</div>;";
+    const initialContent = 'export const Old = () => <div>Old</div>;';
     const tempUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders![0].uri,
-      "temp-buffer-test.tsx",
+      'temp-buffer-test.tsx',
     );
     await vscode.workspace.fs.writeFile(
       tempUri,
@@ -245,7 +246,7 @@ export const TestComponent: FC = () => {
     const doc = await vscode.workspace.openTextDocument(tempUri);
     const editor = await vscode.window.showTextDocument(doc);
 
-    await editor.edit((editBuilder) => {
+    await editor.edit(editBuilder => {
       const lastLine = doc.lineAt(doc.lineCount - 1);
       const range = new vscode.Range(
         new vscode.Position(0, 0),
@@ -259,10 +260,10 @@ export const TestComponent: FC = () => {
 
     // Analyze - should use buffer content (with "use client"), not disk content
     await analyzeDocument(editor, api, mockChannel);
-    assert.ok(true, "Should analyze from buffer not disk");
+    assert.ok(true, 'Should analyze from buffer not disk');
 
     // Clean up without saving
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
     try {
       await vscode.workspace.fs.delete(tempUri);
     } catch {

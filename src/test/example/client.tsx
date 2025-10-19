@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { FC } from "react";
+import type { FC } from 'react';
 
 const ClientComponentDefaultExport: FC = () => {
   return <div>This is a client-side component. (Default export)</div>;
@@ -16,6 +16,6 @@ export function ClientComponentFunctionExport() {
 
 export const ClientComponent: FC = () => (
   <div>This is a client-side component. (Functional component)</div>
-)
+);
 
 export default ClientComponentDefaultExport;

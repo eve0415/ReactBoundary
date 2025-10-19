@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "quoteStyle": "single",
+  "jsxQuoteStyle": "single",
+  "arrowParentheses": "as-needed",
+  "lineEnding": "lf",
+  "experimentalSortImports":{
+    "order": "asc"
+  }
+}

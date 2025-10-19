@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 
 // ============================================================================
 // PUBLIC API
@@ -21,20 +21,20 @@ export async function resolveImportedIdentifier(
     }
 
     // Wait a moment for TypeScript language service to be ready
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // Try multiple resolution strategies to find the actual implementation
 
     // Strategy 1: Use implementation provider (skips type definitions and re-exports)
     let implementations = (await vscode.commands.executeCommand(
-      "vscode.executeImplementationProvider",
+      'vscode.executeImplementationProvider',
       fromDocument.uri,
       position,
     )) as any[];
 
     // Strategy 2: Use definition provider as fallback
     const definitions = (await vscode.commands.executeCommand(
-      "vscode.executeDefinitionProvider",
+      'vscode.executeDefinitionProvider',
       fromDocument.uri,
       position,
     )) as any[];
@@ -72,24 +72,24 @@ export async function findImplementationFile(
 
   // Check if it's a declaration file
   if (
-    !path.endsWith(".d.ts") &&
-    !path.endsWith(".d.mts") &&
-    !path.endsWith(".d.cts")
+    !path.endsWith('.d.ts') &&
+    !path.endsWith('.d.mts') &&
+    !path.endsWith('.d.cts')
   ) {
     return declarationUri; // Not a declaration file, return as-is
   }
 
   // Try to find implementation file by replacing .d.ts with various extensions
-  const basePath = path.replace(/\.d\.(ts|mts|cts)$/, "");
+  const basePath = path.replace(/\.d\.(ts|mts|cts)$/, '');
   const possibleExtensions = [
-    ".tsx",
-    ".ts",
-    ".jsx",
-    ".js",
-    ".mts",
-    ".mjs",
-    ".cts",
-    ".cjs",
+    '.tsx',
+    '.ts',
+    '.jsx',
+    '.js',
+    '.mts',
+    '.mjs',
+    '.cts',
+    '.cjs',
   ];
 
   for (const ext of possibleExtensions) {
@@ -135,7 +135,7 @@ function findImportIdentifierPosition(
     const line = document.lineAt(lineNum);
     const lineText = line.text;
 
-    const importIndex = lineText.indexOf("import");
+    const importIndex = lineText.indexOf('import');
     if (importIndex !== -1) {
       // Found the import keyword, now search forward from this line for the identifier
       for (let searchLine = lineNum; searchLine <= sourceLine; searchLine++) {

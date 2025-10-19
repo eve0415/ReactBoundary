@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 
 /**
  * Decoration for local client component declarations
@@ -7,10 +7,10 @@ import * as vscode from "vscode";
 export const componentDecoration = vscode.window.createTextEditorDecorationType(
   {
     after: {
-      contentText: "⚡ Client Boundary",
-      margin: "0 0 0 1rem",
-      color: "rgba(100, 100, 100, 0.7)",
-      fontStyle: "italic",
+      contentText: '⚡ Client Boundary',
+      margin: '0 0 0 1rem',
+      color: 'rgba(100, 100, 100, 0.7)',
+      fontStyle: 'italic',
     },
   },
 );
@@ -21,9 +21,9 @@ export const componentDecoration = vscode.window.createTextEditorDecorationType(
  */
 export const usageDecoration = vscode.window.createTextEditorDecorationType({
   after: {
-    contentText: "⚡ Client Boundary",
-    margin: "0 0 0 1rem",
-    color: "rgba(255, 150, 50, 0.8)",
-    fontStyle: "italic",
+    contentText: '⚡ Client Boundary',
+    margin: '0 0 0 1rem',
+    color: 'rgba(255, 150, 50, 0.8)',
+    fontStyle: 'italic',
   },
 });
