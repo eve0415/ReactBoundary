@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import { Memory, WasmContext } from "@vscode/wasm-component-model";
 import * as vscode from "vscode";
-import { analyzeDocument } from "./analyze";
+import { analyzeDocument } from "./analyzer";
 import { analyzeReactBoundary } from "./analyzeReactBoundary";
 
 // This method is called when your extension is activated

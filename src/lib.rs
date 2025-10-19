@@ -1,10 +1,13 @@
-mod analyze;
+mod component;
+mod jsx;
 mod range;
 
 use crate::analyze_react_boundary::check::types;
 use oxc::allocator::Allocator;
 use oxc::ast::ast::{BindingPatternKind, ExportDefaultDeclarationKind, ImportDeclarationSpecifier};
-use oxc::ast::ast::{Declaration, ImportOrExportKind, Statement};
+use oxc::ast::ast::{
+    Declaration, Expression, ImportOrExportKind, ObjectPropertyKind, PropertyKey, Statement,
+};
 use oxc::parser::{ParseOptions, Parser};
 use oxc::span::{SourceType, Span};
 use std::collections::{HashMap, HashSet};
@@ -99,6 +102,14 @@ impl Guest for AnalyzeReactBoundary {
             })
             .collect::<Vec<_>>();
 
+        // Collect jsx runtime identifiers (functions imported from "react/jsx-runtime")
+        // These can be renamed: import { jsx as foobar } from "react/jsx-runtime"
+        let jsx_runtime_identifiers: HashSet<String> = imports
+            .iter()
+            .filter(|import| import.source == "react/jsx-runtime")
+            .flat_map(|import| import.identifier.iter().cloned())
+            .collect();
+
         // Track all React component declarations with their spans
         let mut component_declarations: HashMap<String, Span> = HashMap::new();
 
@@ -110,9 +121,15 @@ impl Guest for AnalyzeReactBoundary {
                         if let BindingPatternKind::BindingIdentifier(ident) = &declarator.id.kind {
                             let name = ident.name.to_string();
 
-                            // Check if this is a React component
-                            if analyze::is_react_component(&name, &declarator.id, &declarator.init)
-                            {
+                            // This now handles both JSX syntax and jsx/jsxs runtime calls
+                            let is_component = component::is_react_component(
+                                &name,
+                                &declarator.id,
+                                &declarator.init,
+                                &jsx_runtime_identifiers,
+                            );
+
+                            if is_component {
                                 component_declarations.insert(name, ident.span);
                             }
                         }
@@ -123,10 +140,11 @@ impl Guest for AnalyzeReactBoundary {
                         let name = id.name.to_string();
 
                         // Check if this is a React function component
-                        if analyze::is_react_function_component(
+                        if component::is_react_function_component(
                             &name,
                             &func_decl.return_type,
                             &func_decl.body,
+                            &jsx_runtime_identifiers,
                         ) {
                             component_declarations.insert(name, id.span);
                         }
@@ -138,6 +156,33 @@ impl Guest for AnalyzeReactBoundary {
 
         // Second pass: extract exported component names with their spans
         let mut exported_components: Vec<(String, Span)> = Vec::new();
+
+        // Parse __export() calls to extract exports (common in bundled/compiled code)
+        for statement in program.body.iter() {
+            if let Statement::ExpressionStatement(expr_stmt) = statement
+                && let Expression::CallExpression(call_expr) = &expr_stmt.expression
+                && let Expression::Identifier(callee) = &call_expr.callee
+                && callee.name == "__export"
+                && call_expr.arguments.len() >= 2
+                && let Some(second_arg) = call_expr.arguments.get(1)
+                && let Some(expr) = second_arg.as_expression()
+                && let Expression::ObjectExpression(obj_expr) = expr
+            {
+                // Extract export names from object properties
+                for property in obj_expr.properties.iter() {
+                    if let ObjectPropertyKind::ObjectProperty(prop) = property
+                        && let PropertyKey::StaticIdentifier(key) = &prop.key
+                    {
+                        let export_name = key.name.to_string();
+
+                        // Check if this export is a component we detected
+                        if let Some(&span) = component_declarations.get(&export_name) {
+                            exported_components.push((export_name, span));
+                        }
+                    }
+                }
+            }
+        }
 
         for statement in program.body.iter() {
             match statement {
@@ -164,10 +209,11 @@ impl Guest for AnalyzeReactBoundary {
                                         let name = ident.name.to_string();
 
                                         // Check if this is a React component
-                                        if analyze::is_react_component(
+                                        if component::is_react_component(
                                             &name,
                                             &declarator.id,
                                             &declarator.init,
+                                            &jsx_runtime_identifiers,
                                         ) {
                                             let span = ident.span;
                                             exported_components.push((name.clone(), span));
@@ -181,10 +227,11 @@ impl Guest for AnalyzeReactBoundary {
                                     let name = id.name.to_string();
 
                                     // Check if this is a React function component
-                                    if analyze::is_react_function_component(
+                                    if component::is_react_function_component(
                                         &name,
                                         &func_decl.return_type,
                                         &func_decl.body,
+                                        &jsx_runtime_identifiers,
                                     ) {
                                         let span = id.span;
                                         exported_components.push((name.clone(), span));
@@ -193,6 +240,23 @@ impl Guest for AnalyzeReactBoundary {
                                 }
                             }
                             _ => {}
+                        }
+                    } else if !export_decl.specifiers.is_empty() {
+                        // Handle export { ComponentName } (re-export of already declared variable)
+                        use oxc::ast::ast::ModuleExportName;
+                        for specifier in export_decl.specifiers.iter() {
+                            // Get the exported name from the specifier
+                            let exported_name = match &specifier.exported {
+                                ModuleExportName::IdentifierName(ident) => ident.name.to_string(),
+                                ModuleExportName::IdentifierReference(ident) => {
+                                    ident.name.to_string()
+                                }
+                                ModuleExportName::StringLiteral(lit) => lit.value.to_string(),
+                            };
+                            // Check if this is a component we already declared
+                            if let Some(&span) = component_declarations.get(&exported_name) {
+                                exported_components.push((exported_name, span));
+                            }
                         }
                     }
                 }
@@ -204,10 +268,25 @@ impl Guest for AnalyzeReactBoundary {
             .into_iter()
             .map(|(name, span)| types::ComponentAnalysis {
                 name,
+                // Mark as client component ONLY if the "use client" directive is present
                 is_client_component: has_use_client_directive,
                 range: range::span_to_range(&source_text, span),
             })
             .collect::<Vec<_>>();
+
+        #[cfg(not(test))]
+        if !components.is_empty() && has_use_client_directive {
+            log(&format!(
+                "✓ Detected {} client component{}: {}",
+                components.len(),
+                if components.len() == 1 { "" } else { "s" },
+                components
+                    .iter()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
 
         // Collect all imported identifiers
         let imported_identifiers: HashSet<String> = imports
@@ -216,7 +295,7 @@ impl Guest for AnalyzeReactBoundary {
             .collect();
 
         // Collect JSX element usages
-        let jsx_usages_raw = analyze::collect_jsx_usages(&program.body);
+        let jsx_usages_raw = jsx::collect_jsx_usages(&program.body);
 
         // Filter JSX usages to only those that match imports
         let jsx_usages = jsx_usages_raw
@@ -227,22 +306,6 @@ impl Guest for AnalyzeReactBoundary {
                 range: range::span_to_range(&source_text, span),
             })
             .collect::<Vec<_>>();
-
-        // Log summary for users
-        #[cfg(not(test))]
-        if !components.is_empty() {
-            let client_components: Vec<_> = components
-                .iter()
-                .filter(|c| c.is_client_component)
-                .map(|c| c.name.as_str())
-                .collect();
-            if !client_components.is_empty() {
-                log(&format!(
-                    "Client components: {}",
-                    client_components.join(", ")
-                ));
-            }
-        }
 
         Ok(AnalysisResult {
             imports,
@@ -260,6 +323,10 @@ mod tests {
 
     fn analyze_tsx(source: &str) -> Result<AnalysisResult, String> {
         AnalyzeReactBoundary::analyze(source.as_bytes().to_vec(), "tsx".to_string())
+    }
+
+    fn analyze_with_extension(source: &str, ext: &str) -> Result<AnalysisResult, String> {
+        AnalyzeReactBoundary::analyze(source.as_bytes().to_vec(), ext.to_string())
     }
 
     #[test]
@@ -540,7 +607,7 @@ export default ClientHeader;
     fn test_analyze_invalid_syntax() {
         let source = "const x = {{{";
 
-        let result = AnalyzeReactBoundary::analyze(source.as_bytes().to_vec(), "tsx".to_string());
+        let result = analyze_tsx(source);
 
         // Should return an error
         assert!(result.is_err());
@@ -550,8 +617,7 @@ export default ClientHeader;
     fn test_analyze_invalid_extension() {
         let source = "const x = 10;";
 
-        let result =
-            AnalyzeReactBoundary::analyze(source.as_bytes().to_vec(), "invalid".to_string());
+        let result = analyze_with_extension(source, "invalid");
 
         // Should return an error for invalid extension
         assert!(result.is_err());
@@ -635,6 +701,211 @@ export default DefaultComponent;
         assert!(names.contains(&"DefaultComponent"));
 
         // All should be client components
+        assert!(result.components.iter().all(|c| c.is_client_component));
+    }
+
+    #[test]
+    fn test_analyze_jsx_runtime_calls() {
+        // Test that bundled code using jsx() runtime calls is detected
+        let source = r#"
+"use client";
+import { jsx as _jsx } from "react/jsx-runtime";
+
+const Button = () => {
+  return _jsx("button", { children: "Click me" });
+};
+
+export default Button;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            1,
+            "Should detect component using jsx runtime call"
+        );
+        assert_eq!(result.components[0].name, "Button");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_jsxs_runtime_calls() {
+        // Test jsxs (for multiple children)
+        let source = r#"
+"use client";
+import { jsxs as _jsxs } from "react/jsx-runtime";
+
+export const Container = () => {
+  return _jsxs("div", { children: ["Hello", "World"] });
+};
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            1,
+            "Should detect component using jsxs runtime call"
+        );
+        assert_eq!(result.components[0].name, "Container");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_react_forwardref() {
+        // Test React.forwardRef with jsx runtime calls
+        let source = r#"
+"use client";
+import React from "react";
+import { jsx as _jsx } from "react/jsx-runtime";
+
+const Button = React.forwardRef((props, ref) => {
+  return _jsx("button", { ref, ...props });
+});
+
+export default Button;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            1,
+            "Should detect React.forwardRef component"
+        );
+        assert_eq!(result.components[0].name, "Button");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_forwardref_direct_import() {
+        // Test forwardRef (direct import) with jsx runtime calls
+        let source = r#"
+"use client";
+import { forwardRef } from "react";
+import { jsx as _jsx } from "react/jsx-runtime";
+
+const Input = forwardRef((props, ref) => {
+  return _jsx("input", { ref, ...props });
+});
+
+export { Input };
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            1,
+            "Should detect forwardRef component"
+        );
+        assert_eq!(result.components[0].name, "Input");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_jsx_member_expressions() {
+        let source = r#"
+import { AlertDialog } from "radix-ui";
+
+const App = () => {
+  return (
+    <div>
+      <AlertDialog.Root>
+        <AlertDialog.Trigger>Open</AlertDialog.Trigger>
+        <AlertDialog.Content>
+          <AlertDialog.Title>Alert</AlertDialog.Title>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
+    </div>
+  );
+};
+
+export default App;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        // Should detect the AlertDialog import
+        assert_eq!(result.imports.len(), 1);
+        assert_eq!(result.imports[0].identifier[0], "AlertDialog");
+        assert_eq!(result.imports[0].source, "radix-ui");
+
+        // Should detect all 4 member expression usages (Root, Trigger, Content, Title)
+        // All of them should be tracked as "AlertDialog" (the base identifier)
+        assert_eq!(
+            result.jsx_usages.len(),
+            4,
+            "Should detect 4 AlertDialog member expression usages"
+        );
+        assert!(
+            result
+                .jsx_usages
+                .iter()
+                .all(|u| u.component_name == "AlertDialog")
+        );
+    }
+
+    #[test]
+    fn test_analyze_compiled_jsx_sequence_expression() {
+        // Test the compiled pattern found in npm packages like radix-ui:
+        // (0, _jsx)("div", props) - SequenceExpression wrapped in parentheses
+        let source = r#"
+"use client";
+import { jsx as _jsx } from "react/jsx-runtime";
+
+const AlertDialog = (props) => {
+  return (0, _jsx)("div", {children: "test"});
+};
+
+export default AlertDialog;
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            1,
+            "Should detect component using compiled jsx runtime pattern"
+        );
+        assert_eq!(result.components[0].name, "AlertDialog");
+        assert!(result.components[0].is_client_component);
+    }
+
+    #[test]
+    fn test_analyze_renamed_jsx_import() {
+        // Test that renamed jsx runtime imports work correctly
+        // import { jsx as foobar } from "react/jsx-runtime"
+        let source = r#"
+"use client";
+import { jsx as foobar, jsxs as barfoo } from "react/jsx-runtime";
+
+const MyComponent = () => {
+  return foobar("div", {children: "Hello"});
+};
+
+const MyOtherComponent = () => {
+  return barfoo("div", {children: ["Hello", "World"]});
+};
+
+export { MyComponent, MyOtherComponent };
+        "#;
+
+        let result = analyze_tsx(source).unwrap();
+
+        assert_eq!(
+            result.components.len(),
+            2,
+            "Should detect both components with renamed jsx imports"
+        );
+        assert!(result.components.iter().any(|c| c.name == "MyComponent"));
+        assert!(
+            result
+                .components
+                .iter()
+                .any(|c| c.name == "MyOtherComponent")
+        );
         assert!(result.components.iter().all(|c| c.is_client_component));
     }
 }

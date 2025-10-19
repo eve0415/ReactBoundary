@@ -1,7 +1,7 @@
 import { Memory, WasmContext } from "@vscode/wasm-component-model";
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { analyzeDocument } from "../analyze";
+import { analyzeDocument } from "../analyzer";
 import { analyzeReactBoundary } from "../analyzeReactBoundary";
 
 suite("Document Analysis", () => {

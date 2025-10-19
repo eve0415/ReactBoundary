@@ -621,41 +621,57 @@ suite("Example Files Integration", () => {
       "Should be server component (no 'use client')",
     );
 
-    // Should detect imports
+    // Should detect imports (AlertDialog from radix-ui and client components from ./client)
     assert.strictEqual(
       result.imports.length,
-      1,
-      "Should detect import statement",
+      2,
+      "Should detect import statements",
     );
-    const importInfo = result.imports[0];
+
+    // Find the import from ./client
+    const clientImport = result.imports.find(imp => imp.source === "./client");
+    assert.ok(clientImport, "Should find import from ./client");
     assert.ok(
-      importInfo.identifier.includes("ClientComponentDefaultExport"),
+      clientImport!.identifier.includes("ClientComponentDefaultExport"),
       "Should detect default import",
     );
     assert.ok(
-      importInfo.identifier.includes("ClientComponentNamedExport"),
+      clientImport!.identifier.includes("ClientComponentNamedExport"),
       "Should detect named import",
     );
     assert.ok(
-      importInfo.identifier.includes("ClientComponentFunctionExport"),
+      clientImport!.identifier.includes("ClientComponentFunctionExport"),
       "Should detect function export import",
     );
 
-    // Should detect JSX usages
+    // Should detect JSX usages (3 client components + 6 AlertDialog member expressions)
     assert.strictEqual(
       result.jsxUsages.length,
-      3,
-      "Should detect all three client component usages",
+      9,
+      "Should detect all component usages (3 client components + 6 AlertDialog member expressions)",
     );
-    const usageNames = result.jsxUsages.map((u) => u.componentName).sort();
-    assert.deepStrictEqual(
-      usageNames,
-      [
-        "ClientComponentDefaultExport",
-        "ClientComponentFunctionExport",
-        "ClientComponentNamedExport",
-      ],
-      "Should track all imported component usages",
+
+    // Check that the three client components are in the usages
+    const usageNames = result.jsxUsages.map((u) => u.componentName);
+    assert.ok(
+      usageNames.includes("ClientComponentDefaultExport"),
+      "Should detect ClientComponentDefaultExport usage",
+    );
+    assert.ok(
+      usageNames.includes("ClientComponentNamedExport"),
+      "Should detect ClientComponentNamedExport usage",
+    );
+    assert.ok(
+      usageNames.includes("ClientComponentFunctionExport"),
+      "Should detect ClientComponentFunctionExport usage",
+    );
+
+    // Check that AlertDialog member expressions are detected
+    const alertDialogUsages = usageNames.filter(name => name === "AlertDialog");
+    assert.strictEqual(
+      alertDialogUsages.length,
+      6,
+      "Should detect all 6 AlertDialog member expression usages",
     );
   });
 });

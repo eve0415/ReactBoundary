@@ -1,0 +1,17 @@
+"use client";
+
+import type { FC } from "react";
+import { ClientComponentNamedExport } from "./client";
+
+// This client component uses another client component
+// Should NOT show orange decoration on <ClientComponentNamedExport />
+// because we're already in client context
+const ClientUsesClient: FC = () => {
+  return (
+    <div>
+      <ClientComponentNamedExport />
+    </div>
+  );
+};
+
+export default ClientUsesClient;
