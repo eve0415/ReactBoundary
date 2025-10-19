@@ -32,7 +32,7 @@ jobs:
         run: cargo install wasm-tools
 
       - name: Generate WIT bindings
-        run: wit2ts --outDir ./src ./wit
+        run: pnpm wit2ts --outDir ./src ./wit
 
       - name: Build extension
         run: node esbuild.js
@@ -63,11 +63,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install wasm-tools
+        run: cargo install wasm-tools
+
+      - name: Generate WIT bindings
+        run: pnpm wit2ts --outDir ./src ./wit
+
+      - name: Build Rust code
+        run: cargo build --target wasm32-unknown-unknown
+
       - name: Build tests
         run: tsc -p tsconfig.test.json
 
       - name: Run tests
-        run: xvfb-run -a vscode-test --coverage --coverage-reporter=lcov --coverage-reporter=json
+        run: xvfb-run -a pnpm vscode-test --coverage --coverage-reporter=lcov --coverage-reporter=json
 
   lint:
     name: Check Lint
@@ -78,11 +90,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Install wasm-tools
         run: cargo install wasm-tools
 
       - name: Generate WIT bindings
-        run: wit2ts --outDir ./src ./wit
+        run: pnpm wit2ts --outDir ./src ./wit
 
       - name: Run oxlint
         uses: oxc-project/oxlint-action@v2.0.1
@@ -139,7 +157,7 @@ jobs:
         run: cargo install wasm-tools
 
       - name: Generate WIT bindings
-        run: wit2ts --outDir ./src ./wit
+        run: pnpm wit2ts --outDir ./src ./wit
 
       - name: Check types
         run: tsc -p tsconfig.json & tsc -p tsconfig.test.json & tsc -p tsconfig.react.json

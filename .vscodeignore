@@ -2,6 +2,7 @@
 .vscode-test/**
 .idea/**
 .run/**
+.gitignore/**
 out/**
 node_modules/**
 .pnpm-store/**
