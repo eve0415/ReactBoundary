@@ -2,7 +2,7 @@
   "name": "react-boundary-visualizer",
   "displayName": "React Boundary Visualizer",
   "description": "Visualize Client Component boundaries so you understand what code ships to the client.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "license": "MIT",
   "author": "eve0415 <40632436+eve0415@users.noreply.github.com> (https://github.com/eve0415/)",
   "publisher": "eve0415",
