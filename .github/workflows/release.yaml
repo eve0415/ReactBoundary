@@ -52,12 +52,13 @@ jobs:
       - name: Get generated package file
         run: echo "VSIX_FILE=$(ls react-boundary-visualizer-*.vsix)" >> $GITHUB_ENV
 
-      - name: Release package
+      - name: Upload draft Artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.VSIX_FILE }}
           generate_release_notes: true
           fail_on_unmatched_files: true
+          draft: true
 
       - name: Publish to Visual Studio Marketplace
         run: pnpm vsce publish -i ${{ env.VSIX_FILE }}
@@ -68,3 +69,8 @@ jobs:
         run: pnpm ovsx publish -i ${{ env.VSIX_FILE }}
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Release package
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
