@@ -5,8 +5,9 @@ import * as vscode from "vscode";
 
 suite("Extension Activation", () => {
   test("Extension should be present", () => {
+    console.log(vscode.extensions.all);
     assert.ok(
-      vscode.extensions.getExtension("undefined_publisher.reactboundary"),
+      vscode.extensions.getExtension("eve0415.react-boundary-visualizer"),
     );
   });
 
@@ -14,7 +15,7 @@ suite("Extension Activation", () => {
     this.timeout(15000);
 
     const ext = vscode.extensions.getExtension(
-      "undefined_publisher.reactboundary",
+      "eve0415.react-boundary-visualizer",
     );
     assert.ok(ext, "Extension should be found");
 
