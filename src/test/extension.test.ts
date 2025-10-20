@@ -1,37 +1,37 @@
-import { analyzeReactBoundary } from '../analyzeReactBoundary';
-import { Memory, WasmContext } from '@vscode/wasm-component-model';
-import * as assert from 'assert';
-import * as vscode from 'vscode';
+import { analyzeReactBoundary } from "../analyzeReactBoundary";
+import { Memory, WasmContext } from "@vscode/wasm-component-model";
+import * as assert from "assert";
+import * as vscode from "vscode";
 
-suite('Extension Activation', () => {
-  test('Extension should be present', () => {
+suite("Extension Activation", () => {
+  test("Extension should be present", () => {
     assert.ok(
-      vscode.extensions.getExtension('undefined_publisher.reactboundary'),
+      vscode.extensions.getExtension("undefined_publisher.reactboundary"),
     );
   });
 
-  test('Should activate extension', async function () {
+  test("Should activate extension", async function () {
     this.timeout(15000);
 
     const ext = vscode.extensions.getExtension(
-      'undefined_publisher.reactboundary',
+      "undefined_publisher.reactboundary",
     );
-    assert.ok(ext, 'Extension should be found');
+    assert.ok(ext, "Extension should be found");
 
     // Try to activate the extension
     try {
       if (!ext.isActive) {
         await ext.activate();
       }
-      assert.ok(ext.isActive, 'Extension should be active');
+      assert.ok(ext.isActive, "Extension should be active");
     } catch (error) {
       // If activation fails due to missing dist file, skip this test gracefully
       // This can happen if tests run before the extension is built
       if (
         error instanceof Error &&
-        error.message.includes('Cannot find module')
+        error.message.includes("Cannot find module")
       ) {
-        console.log('Skipping activation test - extension not built yet');
+        console.log("Skipping activation test - extension not built yet");
         this.skip();
       } else {
         throw error;
@@ -40,7 +40,7 @@ suite('Extension Activation', () => {
   });
 });
 
-suite('WASM Module Integration', () => {
+suite("WASM Module Integration", () => {
   let api: analyzeReactBoundary.Exports;
 
   suiteSetup(async function () {
@@ -50,10 +50,10 @@ suite('WASM Module Integration', () => {
     const workspaceFolder = vscode.workspace.workspaceFolders![0].uri;
     const filename = vscode.Uri.joinPath(
       workspaceFolder,
-      'target',
-      'wasm32-unknown-unknown',
-      'debug',
-      'check_react_boundary.wasm',
+      "target",
+      "wasm32-unknown-unknown",
+      "debug",
+      "check_react_boundary.wasm",
     );
     const bits = await vscode.workspace.fs.readFile(filename);
     const module = await WebAssembly.compile(bits as Uint8Array<ArrayBuffer>);
@@ -76,11 +76,11 @@ suite('WASM Module Integration', () => {
     );
   });
 
-  test('should load WASM module successfully', () => {
-    assert.ok(api, 'WASM module should load');
+  test("should load WASM module successfully", () => {
+    assert.ok(api, "WASM module should load");
     assert.ok(
-      typeof api.analyze === 'function',
-      'analyze function should exist',
+      typeof api.analyze === "function",
+      "analyze function should exist",
     );
   });
 
@@ -93,19 +93,19 @@ export const Button: FC = () => {
   return <button>Click me</button>;
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result, 'Should return analysis result');
-    assert.ok(result.components.length > 0, 'Should detect components');
+    assert.ok(result, "Should return analysis result");
+    assert.ok(result.components.length > 0, "Should detect components");
     assert.strictEqual(
       result.components[0].isClientComponent,
       true,
-      'Should mark as client component',
+      "Should mark as client component",
     );
     assert.strictEqual(
       result.components[0].name,
-      'Button',
-      'Should identify component name',
+      "Button",
+      "Should identify component name",
     );
   });
 
@@ -116,18 +116,18 @@ export const ServerComponent: FC = () => {
   return <div>Server</div>;
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result, 'Should return analysis result');
-    assert.ok(result.components.length > 0, 'Should detect components');
+    assert.ok(result, "Should return analysis result");
+    assert.ok(result.components.length > 0, "Should detect components");
     assert.strictEqual(
       result.components[0].isClientComponent,
       false,
-      'Should mark as server component',
+      "Should mark as server component",
     );
   });
 
-  test('should detect imports', () => {
+  test("should detect imports", () => {
     const source = `import { Button } from "./components";
 import DefaultButton from "./default-button";
 
@@ -135,33 +135,33 @@ export const App = () => {
   return <div>App</div>;
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result, 'Should return analysis result');
-    assert.strictEqual(result.imports.length, 2, 'Should detect both imports');
+    assert.ok(result, "Should return analysis result");
+    assert.strictEqual(result.imports.length, 2, "Should detect both imports");
 
-    const namedImport = result.imports.find(imp =>
-      imp.identifier.includes('Button'),
+    const namedImport = result.imports.find((imp) =>
+      imp.identifier.includes("Button"),
     );
-    const defaultImport = result.imports.find(imp =>
-      imp.identifier.includes('DefaultButton'),
+    const defaultImport = result.imports.find((imp) =>
+      imp.identifier.includes("DefaultButton"),
     );
 
-    assert.ok(namedImport, 'Should detect named import');
-    assert.ok(defaultImport, 'Should detect default import');
+    assert.ok(namedImport, "Should detect named import");
+    assert.ok(defaultImport, "Should detect default import");
     assert.deepStrictEqual(
       namedImport?.identifier,
-      ['Button'],
-      'Named import should have correct identifier',
+      ["Button"],
+      "Named import should have correct identifier",
     );
     assert.deepStrictEqual(
       defaultImport?.identifier,
-      ['DefaultButton'],
-      'Default import should have correct identifier',
+      ["DefaultButton"],
+      "Default import should have correct identifier",
     );
   });
 
-  test('should detect JSX usages', () => {
+  test("should detect JSX usages", () => {
     const source = `import { Button } from "./components";
 import Icon from "./icon";
 
@@ -174,214 +174,214 @@ export const App = () => {
   );
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result, 'Should return analysis result');
+    assert.ok(result, "Should return analysis result");
     assert.strictEqual(
       result.jsxUsages.length,
       2,
-      'Should detect both JSX usages',
+      "Should detect both JSX usages",
     );
 
     const buttonUsage = result.jsxUsages.find(
-      usage => usage.componentName === 'Button',
+      (usage) => usage.componentName === "Button",
     );
     const iconUsage = result.jsxUsages.find(
-      usage => usage.componentName === 'Icon',
+      (usage) => usage.componentName === "Icon",
     );
 
-    assert.ok(buttonUsage, 'Should detect Button usage');
-    assert.ok(iconUsage, 'Should detect Icon usage');
+    assert.ok(buttonUsage, "Should detect Button usage");
+    assert.ok(iconUsage, "Should detect Icon usage");
   });
 
-  test('should handle TypeScript files (.ts)', () => {
+  test("should handle TypeScript files (.ts)", () => {
     const source = `function greet(name: string): string {
   return \`Hello, \${name}\`;
 }`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'ts');
+    const result = api.analyze(new TextEncoder().encode(source), "ts");
 
-    assert.ok(result, 'Should return analysis result');
+    assert.ok(result, "Should return analysis result");
     assert.strictEqual(
       result.components.length,
       0,
-      'Should not detect components in non-React file',
+      "Should not detect components in non-React file",
     );
   });
 
-  test('should handle JavaScript files (.js)', () => {
+  test("should handle JavaScript files (.js)", () => {
     const source = `export function Component() {
   return React.createElement('div', null, 'Hello');
 }`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'js');
+    const result = api.analyze(new TextEncoder().encode(source), "js");
 
-    assert.ok(result, 'Should return analysis result');
+    assert.ok(result, "Should return analysis result");
     // This uses React.createElement, not JSX, so it won't be detected
     assert.strictEqual(
       result.components.length,
       0,
-      'Should not detect non-JSX components',
+      "Should not detect non-JSX components",
     );
   });
 
-  test('should handle JSX files (.jsx)', () => {
+  test("should handle JSX files (.jsx)", () => {
     const source = `export const Component = () => {
   return <div>Hello</div>;
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'jsx');
+    const result = api.analyze(new TextEncoder().encode(source), "jsx");
 
-    assert.ok(result, 'Should return analysis result');
-    assert.ok(result.components.length > 0, 'Should detect JSX component');
+    assert.ok(result, "Should return analysis result");
+    assert.ok(result.components.length > 0, "Should detect JSX component");
   });
 
-  test('should provide correct range information', () => {
+  test("should provide correct range information", () => {
     const source = `"use client";
 
 export const Button = () => <button>Click</button>;`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result.components.length > 0, 'Should detect component');
+    assert.ok(result.components.length > 0, "Should detect component");
     const component = result.components[0];
 
-    assert.ok(component.range, 'Should provide range');
+    assert.ok(component.range, "Should provide range");
     assert.ok(
-      typeof component.range.start.line === 'number',
-      'Range should have start line',
+      typeof component.range.start.line === "number",
+      "Range should have start line",
     );
     assert.ok(
-      typeof component.range.start.character === 'number',
-      'Range should have start character',
+      typeof component.range.start.character === "number",
+      "Range should have start character",
     );
     assert.ok(
-      typeof component.range.end.line === 'number',
-      'Range should have end line',
+      typeof component.range.end.line === "number",
+      "Range should have end line",
     );
     assert.ok(
-      typeof component.range.end.character === 'number',
-      'Range should have end character',
+      typeof component.range.end.character === "number",
+      "Range should have end character",
     );
   });
 
-  test('should handle multiple components', () => {
+  test("should handle multiple components", () => {
     const source = `"use client";
 
 export const Button = () => <button>Click</button>;
 export const Input = () => <input type="text" />;
 export const Link = () => <a href="#">Link</a>;`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
     assert.strictEqual(
       result.components.length,
       3,
-      'Should detect all three components',
+      "Should detect all three components",
     );
     assert.ok(
-      result.components.every(c => c.isClientComponent),
-      'All should be client components',
+      result.components.every((c) => c.isClientComponent),
+      "All should be client components",
     );
 
-    const names = result.components.map(c => c.name).sort();
+    const names = result.components.map((c) => c.name).sort();
     assert.deepStrictEqual(
       names,
-      ['Button', 'Input', 'Link'],
-      'Should detect all component names',
+      ["Button", "Input", "Link"],
+      "Should detect all component names",
     );
   });
 
-  test('should handle arrow functions with implicit return', () => {
+  test("should handle arrow functions with implicit return", () => {
     const source = `"use client";
 
 export const Component = () => <div>Implicit return</div>;`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result.components.length > 0, 'Should detect component');
+    assert.ok(result.components.length > 0, "Should detect component");
     assert.strictEqual(
       result.components[0].isClientComponent,
       true,
-      'Should be client component',
+      "Should be client component",
     );
   });
 
-  test('should handle arrow functions with explicit return', () => {
+  test("should handle arrow functions with explicit return", () => {
     const source = `"use client";
 
 export const Component = () => {
   return <div>Explicit return</div>;
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result.components.length > 0, 'Should detect component');
+    assert.ok(result.components.length > 0, "Should detect component");
     assert.strictEqual(
       result.components[0].isClientComponent,
       true,
-      'Should be client component',
+      "Should be client component",
     );
   });
 
-  test('should handle function declarations', () => {
+  test("should handle function declarations", () => {
     const source = `"use client";
 
 export function Component() {
   return <div>Function declaration</div>;
 }`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
     assert.ok(
       result.components.length > 0,
-      'Should detect function declaration',
+      "Should detect function declaration",
     );
     assert.strictEqual(
       result.components[0].isClientComponent,
       true,
-      'Should be client component',
+      "Should be client component",
     );
     assert.strictEqual(
       result.components[0].name,
-      'Component',
-      'Should identify component name',
+      "Component",
+      "Should identify component name",
     );
   });
 
-  test('should handle default exports', () => {
+  test("should handle default exports", () => {
     const source = `"use client";
 
 const Component = () => <div>Default export</div>;
 
 export default Component;`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result.components.length > 0, 'Should detect component');
+    assert.ok(result.components.length > 0, "Should detect component");
     assert.strictEqual(
       result.components[0].isClientComponent,
       true,
-      'Should be client component',
+      "Should be client component",
     );
   });
 
-  test('should handle namespace imports', () => {
+  test("should handle namespace imports", () => {
     const source = `import * as Components from "./components";
 
 export const App = () => {
   return <div>App</div>;
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    const namespaceImport = result.imports.find(imp =>
-      imp.identifier.includes('Components'),
+    const namespaceImport = result.imports.find((imp) =>
+      imp.identifier.includes("Components"),
     );
-    assert.ok(namespaceImport, 'Should detect namespace import');
+    assert.ok(namespaceImport, "Should detect namespace import");
   });
 
-  test('should only track JSX usages for imported components', () => {
+  test("should only track JSX usages for imported components", () => {
     const source = `import { Button } from "./components";
 
 const LocalComponent = () => <div>Local</div>;
@@ -395,22 +395,22 @@ export const App = () => {
   );
 };`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
     // Should only include Button (imported), not LocalComponent (local)
     assert.strictEqual(
       result.jsxUsages.length,
       1,
-      'Should only track imported component usage',
+      "Should only track imported component usage",
     );
     assert.strictEqual(
       result.jsxUsages[0].componentName,
-      'Button',
-      'Should track Button usage',
+      "Button",
+      "Should track Button usage",
     );
   });
 
-  test('should handle files with syntax errors gracefully', () => {
+  test("should handle files with syntax errors gracefully", () => {
     const source = `"use client";
 
 export const Broken = () => {
@@ -419,52 +419,52 @@ export const Broken = () => {
 
     // Should throw an error for syntax errors
     assert.throws(
-      () => api.analyze(new TextEncoder().encode(source), 'tsx'),
+      () => api.analyze(new TextEncoder().encode(source), "tsx"),
       /Unexpected token/,
-      'Should throw error for syntax errors',
+      "Should throw error for syntax errors",
     );
   });
 
-  test('should handle empty files', () => {
-    const source = '';
+  test("should handle empty files", () => {
+    const source = "";
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.ok(result, 'Should return analysis result');
+    assert.ok(result, "Should return analysis result");
     assert.strictEqual(
       result.components.length,
       0,
-      'Should have no components',
+      "Should have no components",
     );
-    assert.strictEqual(result.imports.length, 0, 'Should have no imports');
-    assert.strictEqual(result.jsxUsages.length, 0, 'Should have no JSX usages');
+    assert.strictEqual(result.imports.length, 0, "Should have no imports");
+    assert.strictEqual(result.jsxUsages.length, 0, "Should have no JSX usages");
   });
 
-  test('should handle files with only imports', () => {
+  test("should handle files with only imports", () => {
     const source = `import { Button } from "./components";
 import Icon from "./icon";`;
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
-    assert.strictEqual(result.imports.length, 2, 'Should detect imports');
+    assert.strictEqual(result.imports.length, 2, "Should detect imports");
     assert.strictEqual(
       result.components.length,
       0,
-      'Should have no components',
+      "Should have no components",
     );
-    assert.strictEqual(result.jsxUsages.length, 0, 'Should have no JSX usages');
+    assert.strictEqual(result.jsxUsages.length, 0, "Should have no JSX usages");
   });
 });
 
-suite('WASM Binding Functions', () => {
-  test('should test imports.loop function', async () => {
+suite("WASM Binding Functions", () => {
+  test("should test imports.loop function", async () => {
     const workspaceFolder = vscode.workspace.workspaceFolders![0].uri;
     const filename = vscode.Uri.joinPath(
       workspaceFolder,
-      'target',
-      'wasm32-unknown-unknown',
-      'debug',
-      'check_react_boundary.wasm',
+      "target",
+      "wasm32-unknown-unknown",
+      "debug",
+      "check_react_boundary.wasm",
     );
     await vscode.workspace.fs.readFile(filename);
 
@@ -482,23 +482,23 @@ suite('WASM Binding Functions', () => {
       wasmContext,
     );
 
-    assert.ok(loopedService, 'Should return looped service');
+    assert.ok(loopedService, "Should return looped service");
     assert.ok(
-      typeof loopedService.log === 'function',
-      'Looped service should have log function',
+      typeof loopedService.log === "function",
+      "Looped service should have log function",
     );
   });
 
-  test('should execute module-level bind function code path', async function () {
+  test("should execute module-level bind function code path", async function () {
     this.timeout(10000);
 
     const workspaceFolder = vscode.workspace.workspaceFolders![0].uri;
     const filename = vscode.Uri.joinPath(
       workspaceFolder,
-      'target',
-      'wasm32-unknown-unknown',
-      'debug',
-      'check_react_boundary.wasm',
+      "target",
+      "wasm32-unknown-unknown",
+      "debug",
+      "check_react_boundary.wasm",
     );
     const bits = await vscode.workspace.fs.readFile(filename);
 
@@ -525,11 +525,11 @@ suite('WASM Binding Functions', () => {
       bindAttempted = true;
     }
 
-    assert.ok(bindAttempted, 'Bind function should have been attempted');
+    assert.ok(bindAttempted, "Bind function should have been attempted");
   });
 });
 
-suite('Example Files Integration', () => {
+suite("Example Files Integration", () => {
   let api: analyzeReactBoundary.Exports;
 
   suiteSetup(async function () {
@@ -539,10 +539,10 @@ suite('Example Files Integration', () => {
     const workspaceFolder = vscode.workspace.workspaceFolders![0].uri;
     const filename = vscode.Uri.joinPath(
       workspaceFolder,
-      'target',
-      'wasm32-unknown-unknown',
-      'debug',
-      'check_react_boundary.wasm',
+      "target",
+      "wasm32-unknown-unknown",
+      "debug",
+      "check_react_boundary.wasm",
     );
     const bits = await vscode.workspace.fs.readFile(filename);
     const module = await WebAssembly.compile(bits as Uint8Array<ArrayBuffer>);
@@ -565,63 +565,63 @@ suite('Example Files Integration', () => {
     );
   });
 
-  test('should analyze client.tsx example file', async () => {
+  test("should analyze client.tsx example file", async () => {
     const clientUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders![0].uri,
-      'src',
-      'test',
-      'example',
-      'client.tsx',
+      "src",
+      "test",
+      "example",
+      "client.tsx",
     );
     const sourceBytes = await vscode.workspace.fs.readFile(clientUri);
     const source = new TextDecoder().decode(sourceBytes);
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
     assert.strictEqual(
       result.components.length,
       4,
-      'Should detect all four components',
+      "Should detect all four components",
     );
     assert.ok(
-      result.components.every(c => c.isClientComponent),
-      'All components should be client components',
+      result.components.every((c) => c.isClientComponent),
+      "All components should be client components",
     );
 
-    const names = result.components.map(c => c.name).sort();
+    const names = result.components.map((c) => c.name).sort();
     assert.ok(
-      names.includes('ClientComponentDefaultExport'),
-      'Should detect default export component',
+      names.includes("ClientComponentDefaultExport"),
+      "Should detect default export component",
     );
     assert.ok(
-      names.includes('ClientComponentNamedExport'),
-      'Should detect named export component',
+      names.includes("ClientComponentNamedExport"),
+      "Should detect named export component",
     );
     assert.ok(
-      names.includes('ClientComponentFunctionExport'),
-      'Should detect function export component',
+      names.includes("ClientComponentFunctionExport"),
+      "Should detect function export component",
     );
     assert.ok(
-      names.includes('ClientComponent'),
-      'Should detect additional named export component',
+      names.includes("ClientComponent"),
+      "Should detect additional named export component",
     );
   });
 
-  test('should analyze server.tsx example file', async () => {
+  test("should analyze server.tsx example file", async () => {
     const serverUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders![0].uri,
-      'src',
-      'test',
-      'example',
-      'server.tsx',
+      "src",
+      "test",
+      "example",
+      "server.tsx",
     );
     const sourceBytes = await vscode.workspace.fs.readFile(serverUri);
     const source = new TextDecoder().decode(sourceBytes);
 
-    const result = api.analyze(new TextEncoder().encode(source), 'tsx');
+    const result = api.analyze(new TextEncoder().encode(source), "tsx");
 
     // Should detect the server component
-    assert.ok(result.components.length >= 1, 'Should detect server component');
+    assert.ok(result.components.length >= 1, "Should detect server component");
     assert.strictEqual(
       result.components[0].isClientComponent,
       false,
@@ -632,53 +632,57 @@ suite('Example Files Integration', () => {
     assert.strictEqual(
       result.imports.length,
       2,
-      'Should detect import statements',
+      "Should detect import statements",
     );
 
     // Find the import from ./client
-    const clientImport = result.imports.find(imp => imp.source === './client');
-    assert.ok(clientImport, 'Should find import from ./client');
+    const clientImport = result.imports.find(
+      (imp) => imp.source === "./client",
+    );
+    assert.ok(clientImport, "Should find import from ./client");
     assert.ok(
-      clientImport!.identifier.includes('ClientComponentDefaultExport'),
-      'Should detect default import',
+      clientImport!.identifier.includes("ClientComponentDefaultExport"),
+      "Should detect default import",
     );
     assert.ok(
-      clientImport!.identifier.includes('ClientComponentNamedExport'),
-      'Should detect named import',
+      clientImport!.identifier.includes("ClientComponentNamedExport"),
+      "Should detect named import",
     );
     assert.ok(
-      clientImport!.identifier.includes('ClientComponentFunctionExport'),
-      'Should detect function export import',
+      clientImport!.identifier.includes("ClientComponentFunctionExport"),
+      "Should detect function export import",
     );
 
     // Should detect JSX usages (3 client components + 6 AlertDialog member expressions)
     assert.strictEqual(
       result.jsxUsages.length,
       9,
-      'Should detect all component usages (3 client components + 6 AlertDialog member expressions)',
+      "Should detect all component usages (3 client components + 6 AlertDialog member expressions)",
     );
 
     // Check that the three client components are in the usages
-    const usageNames = result.jsxUsages.map(u => u.componentName);
+    const usageNames = result.jsxUsages.map((u) => u.componentName);
     assert.ok(
-      usageNames.includes('ClientComponentDefaultExport'),
-      'Should detect ClientComponentDefaultExport usage',
+      usageNames.includes("ClientComponentDefaultExport"),
+      "Should detect ClientComponentDefaultExport usage",
     );
     assert.ok(
-      usageNames.includes('ClientComponentNamedExport'),
-      'Should detect ClientComponentNamedExport usage',
+      usageNames.includes("ClientComponentNamedExport"),
+      "Should detect ClientComponentNamedExport usage",
     );
     assert.ok(
-      usageNames.includes('ClientComponentFunctionExport'),
-      'Should detect ClientComponentFunctionExport usage',
+      usageNames.includes("ClientComponentFunctionExport"),
+      "Should detect ClientComponentFunctionExport usage",
     );
 
     // Check that AlertDialog member expressions are detected
-    const alertDialogUsages = usageNames.filter(name => name === 'AlertDialog');
+    const alertDialogUsages = usageNames.filter(
+      (name) => name === "AlertDialog",
+    );
     assert.strictEqual(
       alertDialogUsages.length,
       6,
-      'Should detect all 6 AlertDialog member expression usages',
+      "Should detect all 6 AlertDialog member expression usages",
     );
   });
 });

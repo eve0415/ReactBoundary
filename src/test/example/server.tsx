@@ -1,9 +1,9 @@
 import ClientComponentDefaultExport, {
   ClientComponentFunctionExport,
   ClientComponentNamedExport,
-} from './client';
-import { AlertDialog } from 'radix-ui';
-import type { FC } from 'react';
+} from "./client";
+import { AlertDialog } from "radix-ui";
+import type { FC } from "react";
 
 const ServerComponent: FC = () => {
   return (
