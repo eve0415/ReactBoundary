@@ -47,7 +47,7 @@ jobs:
           NODE_ENV: production
 
       - name: Create VSIX package
-        run: vsce package
+        run: pnpm vsce package
 
       - name: Get generated package file
         run: echo "VSIX_FILE=$(ls reactboundary-*.vsix)" >> $GITHUB_ENV
