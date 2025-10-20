@@ -1,0 +1,71 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install wasm-tools
+        run: cargo install wasm-tools
+
+      - name: Generate WIT bindings
+        run: pnpm wit2ts --outDir ./src ./wit
+
+      - name: Build Rust code
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Build extension
+        run: node esbuild.js
+        env:
+          NODE_ENV: production
+
+      - name: Create VSIX package
+        run: vsce package
+
+      - name: Get generated package file
+        run: echo "VSIX_FILE=$(ls reactboundary-*.vsix)" >> $GITHUB_ENV
+
+      - name: Release package
+        uses: softprops/action-gh-release@v2
+        id: release
+        with:
+          files: reactboundary-*.vsix
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+      - name: Publish to Visual Studio Marketplace
+        uses: pnpm vsce publish -i ${{ env.VSIX_FILE }}
+        with:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        uses: pnpm ovsx publish -i ${{ env.VSIX_FILE }}
+        with:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
