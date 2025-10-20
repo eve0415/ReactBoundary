@@ -2,7 +2,7 @@ This file provides guidance to AI when working with code in this repository.
 
 ## Project Overview
 
-ReactBoundary is a VS Code extension that detects and highlights Client Component boundaries in React applications using the RSC (React Server Components) architecture. It identifies components with `"use client"` directive, helping developers understand what gets included in the client bundle and think carefully about performance implications (prop sizes, etc).
+React Boundary Visualizer is a VS Code extension that detects and highlights Client Component boundaries in React applications using the RSC (React Server Components) architecture. It identifies components with `"use client"` directive, helping developers understand what gets included in the client bundle and think carefully about performance implications (prop sizes, etc).
 
 ## Design Philosophy & Component Model
 

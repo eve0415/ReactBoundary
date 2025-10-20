@@ -1,5 +1,5 @@
 {
-  "name": "ReactBoundary",
+  "name": "React Boundary Visualizer",
   "build": {
     "dockerfile": "Dockerfile"
   },

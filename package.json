@@ -1,18 +1,18 @@
 {
-  "name": "reactboundary",
-  "displayName": "ReactBoundary",
+  "name": "react-boundary-visualizer",
+  "displayName": "React Boundary Visualizer",
   "description": "Visualize Client Component boundaries so you understand what code ships to the client.",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "license": "MIT",
   "author": "eve0415 <40632436+eve0415@users.noreply.github.com> (https://github.com/eve0415/)",
   "publisher": "eve0415",
-  "homepage": "https://github.com/eve0415/ReactBoundary",
+  "homepage": "https://github.com/eve0415/ReactBoundaryVisualizer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eve0415/ReactBoundary"
+    "url": "https://github.com/eve0415/ReactBoundaryVisualizer"
   },
   "bugs": {
-    "url": "https://github.com/eve0415/ReactBoundary/issues"
+    "url": "https://github.com/eve0415/ReactBoundaryVisualizer/issues"
   },
   "engines": {
     "vscode": "^1.105.0",

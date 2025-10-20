@@ -1,10 +1,10 @@
-# ReactBoundary
+# React Boundary Visualizer
 
 Visualize Client Component boundaries so you understand what code ships to the client.
 
 ## Features
 
-ReactBoundary helps you visualize Client Component boundaries in your codebase by automatically detecting and highlighting components with `"use client"` directive. This extension is designed to help you:
+React Boundary Visualizer helps you visualize Client Component boundaries in your codebase by automatically detecting and highlighting components with `"use client"` directive. This extension is designed to help you:
 
 - **Identify Client Components**: Instantly see when components have the `"use client"` directive with inline decorations
 - **Visualize Client Boundaries**: See where Client Components are used in files without `"use client"` directive
@@ -20,7 +20,7 @@ The extension provides context-aware decorations:
 
 ### Smart Component Detection
 
-ReactBoundary uses a high-performance Rust + WebAssembly engine to accurately detect React components, including:
+React Boundary Visualizer uses a high-performance Rust + WebAssembly engine to accurately detect React components, including:
 
 - Function components with JSX or React type annotations
 - Arrow function components
@@ -48,17 +48,17 @@ This extension currently does not contribute any VS Code settings. It works auto
 - The extension requires valid syntax to analyze files. Syntax errors will prevent analysis until resolved.
 - Only detects `"use client"` directives in directly imported files (does not track transitive dependencies). This is correct behavior - components without `"use client"` are dual-mode and can render on either server or client depending on the caller.
 
-Please report any issues on the [GitHub repository](https://github.com/eve0415/ReactBoundary/issues).
+Please report any issues on the [GitHub repository](https://github.com/eve0415/ReactBoundaryVisualizer/issues).
 
 ## Release Notes
 
-See the [Releases page](https://github.com/eve0415/ReactBoundary/releases) for version history and changelogs.
+See the [Releases page](https://github.com/eve0415/ReactBoundaryVisualizer/releases) for version history and changelogs.
 
 ---
 
 ## Contributing
 
-Pull requests are appreciated! Check out the [repository](https://github.com/eve0415/ReactBoundary) for development instructions and contribution guidelines.
+Pull requests are appreciated! Check out the [repository](https://github.com/eve0415/ReactBoundaryVisualizer) for development instructions and contribution guidelines.
 
 This extension is built with:
 - **Rust + WebAssembly** for high-performance AST parsing (using OxC)
