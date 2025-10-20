@@ -50,12 +50,12 @@ jobs:
         run: pnpm vsce package
 
       - name: Get generated package file
-        run: echo "VSIX_FILE=$(ls reactboundary-*.vsix)" >> $GITHUB_ENV
+        run: echo "VSIX_FILE=$(ls react-boundary-visualizer-*.vsix)" >> $GITHUB_ENV
 
       - name: Release package
         uses: softprops/action-gh-release@v2
         with:
-          files: reactboundary-*.vsix
+          files: ${{ env.VSIX_FILE }}
           generate_release_notes: true
           fail_on_unmatched_files: true
 
