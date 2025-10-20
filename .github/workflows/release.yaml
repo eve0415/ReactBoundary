@@ -54,18 +54,17 @@ jobs:
 
       - name: Release package
         uses: softprops/action-gh-release@v2
-        id: release
         with:
           files: reactboundary-*.vsix
           generate_release_notes: true
           fail_on_unmatched_files: true
 
       - name: Publish to Visual Studio Marketplace
-        uses: pnpm vsce publish -i ${{ env.VSIX_FILE }}
-        with:
+        run: pnpm vsce publish -i ${{ env.VSIX_FILE }}
+        env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX Registry
-        uses: pnpm ovsx publish -i ${{ env.VSIX_FILE }}
-        with:
+        run: pnpm ovsx publish -i ${{ env.VSIX_FILE }}
+        env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
