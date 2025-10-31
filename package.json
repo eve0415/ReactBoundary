@@ -15,7 +15,7 @@
     "url": "https://github.com/eve0415/ReactBoundaryVisualizer/issues"
   },
   "engines": {
-    "vscode": "^1.105.0",
+    "vscode": "^1.99.3",
     "node": ">=22.20.0",
     "pnpm": ">=10.18.3"
   },
