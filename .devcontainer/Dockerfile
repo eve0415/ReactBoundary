@@ -1,5 +1,5 @@
 # For config options, see the README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
-FROM mcr.microsoft.com/devcontainers/typescript-node:4.0.1-22-trixie
+FROM mcr.microsoft.com/devcontainers/typescript-node:4.0.1-24-trixie
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
