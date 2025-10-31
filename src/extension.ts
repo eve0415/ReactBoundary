@@ -1,16 +1,16 @@
-import { analyzeDocument } from "./analyzer";
-import { analyzeReactBoundary } from "./analyzeReactBoundary";
+import { analyzeDocument } from './analyzer';
+import { analyzeReactBoundary } from './analyzeReactBoundary';
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { Memory, WasmContext } from "@vscode/wasm-component-model";
-import * as vscode from "vscode";
+import { Memory, WasmContext } from '@vscode/wasm-component-model';
+import * as vscode from 'vscode';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
   // The channel for printing the result.
   const channel = vscode.window.createOutputChannel(
-    "React Boundary Visualizer",
+    'React Boundary Visualizer',
     {
       log: true,
     },
@@ -20,10 +20,10 @@ export async function activate(context: vscode.ExtensionContext) {
   // Load the Wasm module
   const filename = vscode.Uri.joinPath(
     context.extensionUri,
-    "target",
-    "wasm32-unknown-unknown",
-    process.env.NODE_ENV === "production" ? "release" : "debug",
-    "check_react_boundary.wasm",
+    'target',
+    'wasm32-unknown-unknown',
+    process.env.NODE_ENV === 'production' ? 'release' : 'debug',
+    'check_react_boundary.wasm',
   );
   const bits = await vscode.workspace.fs.readFile(filename);
   const module = await WebAssembly.compile(bits as Uint8Array<ArrayBuffer>);
@@ -53,8 +53,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Listen to document changes
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(async (e) => {
-      await analyzeDocument(e, api, channel).catch((err) => {
+    vscode.window.onDidChangeActiveTextEditor(async e => {
+      await analyzeDocument(e, api, channel).catch(err => {
         channel.error(`Error during analysis: ${err}`);
       });
     }),
@@ -62,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Kick off first run when extension is activated
   await analyzeDocument(vscode.window.activeTextEditor, api, channel).catch(
-    (err) => {
+    err => {
       channel.error(`Error during analysis: ${err}`);
     },
   );
